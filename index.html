@@ -1776,16 +1776,17 @@ function reactionVisual(e){return String(e).startsWith('stk:')?(window.stk?windo
 
 // Независимое долгое нажатие для меню сообщений. Не зависит от жеста свайпа.
 (function(){
- let timer=null, origin=null, fired=false;
+ let timer=null, origin=null, suppressContextMenuUntil=0;
  const clear=()=>{if(timer){clearTimeout(timer);timer=null;}origin=null;};
  document.addEventListener('pointerdown',e=>{
   if(e.pointerType!=='touch'&&e.pointerType!=='pen')return;
   const el=e.target.closest('#messages .msg[data-id]');
   if(!el||e.target.closest('button,a,input,textarea, audio,video'))return;
-  clear();fired=false;origin={x:e.clientX,y:e.clientY,el};
+  clear();origin={x:e.clientX,y:e.clientY,el};
   timer=setTimeout(()=>{
    if(!origin)return;
-   fired=true;const id=String(origin.el.dataset.id||'');
+   suppressContextMenuUntil=Date.now()+900;
+   const id=String(origin.el.dataset.id||'');
    if(id){haptic(15);window.openMsgActions(id);}
    clear();
   },520);
@@ -1800,6 +1801,7 @@ function reactionVisual(e){return String(e).startsWith('stk:')?(window.stk?windo
   const el=e.target.closest('#messages .msg[data-id]');
   if(!el)return;
   e.preventDefault();e.stopPropagation();
+  if(Date.now()<suppressContextMenuUntil)return;
   clear();window.openMsgActions(String(el.dataset.id||''));
  },true);
 })();
