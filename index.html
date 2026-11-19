@@ -3892,11 +3892,16 @@ window.treadOnSignedIn = async function(user){
     if(profileError) console.warn('Profile reload:',profileError.message);
   }
   if(profile){
-    const legacyDefaultName=String(profile.display_name||'').toLowerCase()==='нурофент';
-    data.me.name=legacyDefaultName?displayName:(profile.display_name||displayName);
+    const oldName=String(profile.display_name||'').trim().toLowerCase();
+    const legacyDefaultName=['нурофент','новый пользователь','пользователь','user'].includes(oldName);
+    const adjectives=['Тихий','Быстрый','Лунный','Добрый','Смелый','Яркий','Мягкий','Северный'];
+    const animals=['Лис','Волк','Кот','Сокол','Заяц','Медведь','Барс','Кит'];
+    const generatedName=adjectives[Math.floor(Math.random()*adjectives.length)]+animals[Math.floor(Math.random()*animals.length)]+String(Math.floor(1000+Math.random()*9000));
+    const safeDisplayName=legacyDefaultName?generatedName:(profile.display_name||displayName);
+    data.me.name=safeDisplayName;
     data.me.avatar=profile.avatar_url?data.me.avatar:(data.me.name||'U').slice(0,1).toUpperCase();
-    let username=(String(profile.username||'').toLowerCase()==='нурофент'?'':(profile.username||''));
-    if(legacyDefaultName){const {error:renameError}=await window.treadSupabase.from('profiles').update({display_name:displayName}).eq('id',user.id);if(renameError)console.warn('Profile name migration:',renameError.message);}
+    let username=(['нурофент','новый пользователь','пользователь','user'].includes(String(profile.username||'').trim().toLowerCase())?'':(profile.username||''));
+    if(legacyDefaultName){const {error:renameError}=await window.treadSupabase.from('profiles').update({display_name:safeDisplayName}).eq('id',user.id);if(renameError)console.warn('Profile name migration:',renameError.message);}
     // Генерируем уникальный username. Уникальность окончательно проверяет индекс БД;
     // при конфликте пробуем новый случайный вариант, а при неудаче оставляем поле пустым.
     if(!username){
