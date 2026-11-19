@@ -1442,6 +1442,9 @@ function renderMods(){
   return plgHTML();
 }
 
+function openChatSafe(id){const c=data.chats.find(x=>String(x.id)===String(id));if(c)openChat(c.id);}
+function openItemActionsSafe(id,type){const c=data.chats.find(x=>String(x.id)===String(id));if(c)openItemActions(c.id,type);}
+function chatLongStartSafe(e,id,type){const c=data.chats.find(x=>String(x.id)===String(id));if(c)chatLongStart(e,c.id,type);}
 function renderChatItem(c){
   const lastMsg=c.messages[c.messages.length-1]||null;
   const unread=c.unread||0,muted=c.notifications==='none';
@@ -1459,7 +1462,7 @@ function renderChatItem(c){
   const time=lastMsg?relTime(lastMsg.createdAt):'';
   const safeTitle=esc(c.title||'Без имени');
   const avatar=(c.title||'?').trim().charAt(0).toUpperCase()||'?';
-  return `<div class="chat-item ${unread?'has-unread':''}" onclick="openChat(${c.id})" oncontextmenu="event.preventDefault();openItemActions(${c.id},'chat')" ontouchstart="chatLongStart(event,${c.id},'chat')" ontouchend="chatLongEnd()">
+  return `<div class="chat-item ${unread?'has-unread':''}" onclick="openChatSafe('${String(c.id)}')" oncontextmenu="event.preventDefault();openItemActionsSafe('${String(c.id)}','chat')" ontouchstart="chatLongStartSafe(event,'${String(c.id)}','chat')" ontouchend="chatLongEnd()">
     <div class="chat-av-wrap ${online?'online':''}" ${isPersonal?`data-presence-chat="${c.id}"`:''}>
       <div class="chat-av" style="background:${hashColor(c.title)}">${esc(avatar)}${unread>0?`<div class="badge">${unread>99?'99+':unread}</div>`:''}</div>
     </div>
