@@ -1828,7 +1828,7 @@ function startChatReply(id){
     if(!target){toast('Не удалось найти это сообщение. Обнови чат и попробуй ещё раз.');return}
     if(target.gift){toast('На событие-подарок нельзя ответить');return}
     const parent=findTopParent(currentChat,id);
-    const m=parent?.id===id?parent:parent?.replies?.find(r=>r.id===id);
+    const m=String(parent?.id)===String(id)?parent:parent?.replies?.find(r=>String(r.id)===String(id));
     if(!m)return;
     replyTo={id};
     document.getElementById('chatRbAuthor').textContent='ответ на: '+m.author;
