@@ -4135,6 +4135,21 @@ if(window.treadSupabaseReady()){
   if(chat?._remoteConversationId&&m?._remoteId){if(!m.out){notify('Изменять можно только свои сообщения.');return;}const next=prompt('Измени сообщение',m.text||'');if(next===null)return;if(!next.trim()){notify('Сообщение не может быть пустым.');return;}const {error}=await sb.from('messages').update({body:next.trim()}).eq('id',m._remoteId);if(error){notify('Не удалось изменить сообщение: '+error.message);return;}await refreshMessages(chat);notify('Сообщение изменено');return;}
   return oldEdit.apply(this,arguments);
  };
+ async function notifyPeerConversationDeleted(sb,peerIds,conversationId){
+  for(const peerId of peerIds){
+   let peerChannel=null;
+   try{
+    peerChannel=sb.channel('tread-user-messages-'+peerId);
+    const ready=await new Promise(resolve=>{
+     let settled=false;const finish=value=>{if(settled)return;settled=true;clearTimeout(timer);resolve(value)};
+     const timer=setTimeout(()=>finish(false),1800);
+     peerChannel.subscribe(status=>{if(status==='SUBSCRIBED')finish(true);else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')finish(false)});
+    });
+    if(ready)await peerChannel.send({type:'broadcast',event:'conversation_deleted',payload:{conversation_id:conversationId}});
+   }catch(e){console.warn('Conversation delete notification failed:',e?.message||e)}
+   finally{if(peerChannel){try{await sb.removeChannel(peerChannel)}catch(e){}}}
+  }
+ }
  const oldDoDelete=window.doDelete;
  window.confirmDelete=function(id,type){
   const idArg=Number.isFinite(Number(id))?String(Number(id)):'null',kind=type==='channel'?'канал':'чат';
@@ -4148,9 +4163,13 @@ if(window.treadSupabaseReady()){
    const sb=client(),uid=window.treadCurrentUser?.id;
    if(!sb||!uid){notify('Войди в аккаунт, чтобы удалить синхронизированный чат.');return;}
    try{
+    const {data:members,error:membersError}=await sb.from('conversation_members').select('user_id').eq('conversation_id',chat._remoteConversationId);
+    if(membersError)throw membersError;
+    const peerIds=[...new Set((members||[]).map(m=>m.user_id).filter(x=>x&&x!==uid))];
     const {data:deleted,error}=await sb.rpc('delete_conversation_for_all',{p_conversation_id:chat._remoteConversationId});
     if(error)throw error;
     if(deleted!==true){notify('Сервер не подтвердил удаление переписки.');return;}
+    await notifyPeerConversationDeleted(sb,peerIds,chat._remoteConversationId);
     data.chats=data.chats.filter(c=>c!==chat);
     if(currentChat===chat){
      currentChat=null;
@@ -4182,6 +4201,7 @@ if(window.treadSupabaseReady()){
   channel=sb.channel('tread-user-messages-'+window.treadCurrentUser.id)
    .on('postgres_changes',{event:'*',schema:'public',table:'messages'},payload=>{const row=payload.new&&Object.keys(payload.new).length?payload.new:payload.old;const chat=data.chats.find(x=>x._remoteConversationId===row?.conversation_id);if(payload.eventType==='DELETE')loadConversations();else if(chat)refreshMessages(chat);})
    .on('postgres_changes',{event:'*',schema:'public',table:'conversation_members',filter:'user_id=eq.'+window.treadCurrentUser.id},()=>loadConversations())
+   .on('broadcast',{event:'conversation_deleted'},({payload})=>{if(payload?.conversation_id)loadConversations();})
    .on('postgres_changes',{event:'*',schema:'public',table:'message_reactions'},payload=>{const row=payload.new&&Object.keys(payload.new).length?payload.new:payload.old;if(!row?.message_id)return;const chat=data.chats.find(x=>(x.messages||[]).some(m=>m._remoteId===row.message_id));if(chat)refreshMessages(chat);})
    .subscribe();
  }
