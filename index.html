@@ -2262,6 +2262,14 @@ function openSettingsPage(page){
  const profile=document.getElementById('screen-my-profile');
  profile?.classList.add('settings-page-open');
  document.getElementById('myProfileContent').innerHTML=`<div class="settings-subheader chat-header"><button class="settings-back-label" onclick="backToSettingsMenu()" aria-label="Назад"><span>‹</span></button><div class="chat-title-block"><div class="chat-title-name">${names[page]||'Настройки'}</div></div><div style="width:86px;flex:0 0 86px"></div></div><div class="settings-subpage" data-settings-page="${page}">${html}</div>`;
+ if(page==='advanced'){
+  const sub=document.querySelector('.settings-subpage[data-settings-page="advanced"]');
+  if(sub&&!sub.querySelector('.tread-advanced-signout')){
+   const wrap=document.createElement('div');wrap.className='profile-section';wrap.style.marginTop='14px';
+   wrap.innerHTML='<button type="button" class="setting-row tread-advanced-signout" style="width:100%;color:#e06464;background:transparent;border:0;text-align:left"><span class="ic">↪</span><span class="settings-nav-copy"><span class="lbl">Выйти из аккаунта</span><small>Завершить сеанс и вернуться к регистрации</small></span></button>';
+   wrap.querySelector('button').addEventListener('click',()=>window.treadSignOutToRegistration());sub.appendChild(wrap);
+  }
+ }
 }
 function setDefaultGroupVisibility(value){
   if(!['public','private'].includes(value))return;
