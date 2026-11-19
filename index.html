@@ -4118,5 +4118,32 @@ if(window.treadSupabaseReady()){
 })();
 </script>
 
+
+<script id="tread-account-signout-control">
+(()=>{
+  const add=()=>{
+    const root=document.querySelector('#myProfileContent .st-wrap');
+    if(!root)return;
+    root.querySelectorAll('.tread-signout-setting').forEach(x=>x.remove());
+    if(!window.treadCurrentUser)return;
+    const search=root.querySelector('.st-search');
+    const btn=document.createElement('button');
+    btn.type='button';btn.className='tread-signout-setting';
+    btn.style.cssText='display:flex;align-items:center;gap:12px;width:100%;padding:15px;margin:12px 0;border:1px solid rgba(220,90,90,.28);border-radius:16px;background:rgba(220,70,70,.08);color:var(--text);font:inherit;text-align:left;cursor:pointer';
+    btn.innerHTML='<span style="font-size:20px">↪</span><span style="flex:1"><b>Выйти из аккаунта</b><small style="display:block;color:var(--muted);margin-top:3px">Завершить текущий сеанс Google</small></span>';
+    btn.addEventListener('click',async()=>{
+      if(!confirm('Выйти из аккаунта tread?'))return;
+      btn.disabled=true;
+      try{await window.treadSignOut();if(typeof toast==='function')toast('Вы вышли из аккаунта');if(typeof window.renderMenu==='function')window.renderMenu();}
+      catch(e){btn.disabled=false;if(typeof toast==='function')toast('Не удалось выйти: '+e.message);}
+    });
+    if(search)search.insertAdjacentElement('beforebegin',btn);else root.appendChild(btn);
+  };
+  const render=window.renderMenu;
+  if(typeof render==='function')window.renderMenu=function(){render.apply(this,arguments);add();};
+  window.addEventListener('tread-auth-changed',()=>setTimeout(add,80));
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',add);else setTimeout(add,0);
+})();
+</script>
 </body>
 </html>
