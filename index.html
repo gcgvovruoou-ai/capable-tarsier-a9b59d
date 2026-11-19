@@ -1347,8 +1347,8 @@ const haptic=(ms=8)=>{if(data?.settings?.vibration!==false&&navigator.vibrate)na
 let toastTimer;
 function toast(msg){let t=document.querySelector('.toast');if(!t){t=document.createElement('div');t.className='toast';document.body.appendChild(t)}t.textContent=msg;t.classList.add('on');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('on'),1700)}
 
-function findTopParent(chat,id){for(const m of chat.messages){if(m.id===id)return m;if(m.replies)for(const r of m.replies)if(r.id===id)return m}return null}
-function findMsgInChat(chat,id){for(const m of chat.messages){if(m.id===id)return m;if(m.replies)for(const r of m.replies)if(r.id===id)return r}return null}
+function findTopParent(chat,id){if(!chat)return null;for(const m of chat.messages||[]){if(String(m.id)===String(id))return m;if(m.replies)for(const r of m.replies)if(String(r.id)===String(id))return m}return null}
+function findMsgInChat(chat,id){if(!chat)return null;for(const m of chat.messages||[]){if(String(m.id)===String(id))return m;if(m.replies)for(const r of m.replies)if(String(r.id)===String(id))return r}return null}
 function toggleReaction(obj,e){obj.reactions=obj.reactions||{};obj.reactionsBy=obj.reactionsBy||{};if(obj.reactionsBy[data.me.name]===e){delete obj.reactionsBy[data.me.name];obj.reactions[e]=Math.max(0,(obj.reactions[e]||1)-1);if(obj.reactions[e]===0)delete obj.reactions[e]}else{const prev=obj.reactionsBy[data.me.name];if(prev&&obj.reactions[prev]){obj.reactions[prev]=Math.max(0,obj.reactions[prev]-1);if(obj.reactions[prev]===0)delete obj.reactions[prev]}obj.reactionsBy[data.me.name]=e;obj.reactions[e]=(obj.reactions[e]||0)+1}}
 
 // ПРОСТАЯ ЗАГРУЗКА ИЗОБРАЖЕНИЙ
@@ -1738,7 +1738,7 @@ function reactionVisual(e){return String(e).startsWith('stk:')?(window.stk?windo
     const el=e.target.closest('[data-swipe]');if(!el)return;
     const t=e.touches[0];
     g={el,kind:el.dataset.swipe,id:Number(el.dataset.id),x:t.clientX,y:t.clientY,active:false,moved:false,ready:false,long:false,ico:null,insideCode:!!e.target.closest('.tread-code pre')};
-    if(g.kind==='chat'&&!el.classList.contains('elix-gift-row')&&!e.target.closest('.msg-text'))g.timer=setTimeout(()=>{if(g&&!g.moved){g.long=true;haptic(15);openMsgActions(g.id)}},500);
+    if(g.kind==='chat'&&!el.classList.contains('elix-gift-row'))g.timer=setTimeout(()=>{if(g&&!g.moved){g.long=true;haptic(15);openMsgActions(g.id)}},480);
   }
   function move(e){
     if(!g)return;
@@ -1794,7 +1794,9 @@ function openMsgActions(id){
 
 // ЕДИНАЯ ЛОГИКА ОТВЕТА В ЧАТЕ
 function startChatReply(id){
-    const target=findMsgInChat(currentChat,id);if(!target||target.gift){toast('На событие-подарок нельзя ответить');return}
+    const target=findMsgInChat(currentChat,id);
+    if(!target){toast('Не удалось найти это сообщение. Обнови чат и попробуй ещё раз.');return}
+    if(target.gift){toast('На событие-подарок нельзя ответить');return}
     const parent=findTopParent(currentChat,id);
     const m=parent?.id===id?parent:parent?.replies?.find(r=>r.id===id);
     if(!m)return;
@@ -3660,7 +3662,7 @@ folders:()=>G('Мои папки',(FL().length?FL().map(f=>R({i:'folder',t:esc(f
 devices:()=>{const ua=navigator.userAgent,os=/Android/.test(ua)?'Android':/iPhone|iPad|iPod/.test(ua)?'iOS':/Windows/.test(ua)?'Windows':/Mac OS/.test(ua)?'macOS':/Linux/.test(ua)?'Linux':'Неизвестно',br=/Edg\//.test(ua)?'Edge':/OPR\//.test(ua)?'Opera':/Firefox\//.test(ua)?'Firefox':/Chrome\//.test(ua)?'Chrome':/Safari\//.test(ua)?'Safari':'Браузер',pwa=matchMedia('(display-mode: standalone)').matches,googleButton=!window.treadCurrentUser?`<button type="button" class="tread-google-setting" style="margin:0 0 14px" onclick="treadGoogleLogin()"><span class="tgs-icon" aria-hidden="true">G</span><span class="tgs-copy"><b>Войти через Google</b><small>Сохрани аккаунт и синхронизируй чаты</small></span><span aria-hidden="true">›</span></button>`:'';return googleButton+G('Это устройство',R({i:'device',t:br+' · '+os,s:'Текущий сеанс',v:'Активно'})+R({i:'layers',t:'Экран',v:screen.width+' × '+screen.height})+R({i:'globe',t:'Язык и часовой пояс',v:navigator.language+' · '+(Intl.DateTimeFormat().resolvedOptions().timeZone||'')})+R({i:'shield',t:'Режим',v:pwa?'Приложение':'Браузер'})+R({i:'bolt',t:'Сеть',v:navigator.onLine?'В сети':'Нет сети'}),'Другие устройства появятся после подключения синхронизации.')},
 language:()=>G('',R({i:'globe',t:'Русский',v:'✓'})+R({i:'globe',t:'English',v:'Скоро',go:"selectLanguage('en')"}),'Интерфейс на английском готовится.'),
 plugins:()=>`<div class="st-group">${window.plgHTML?plgHTML():''}</div>`,
-advanced:()=>G('О приложении',R({i:'info',t:'tread.',s:'Мессенджер-прототип: чаты, лента, подарки, плагины',v:'локально'})+R({i:'database'in P?'db':'db',t:'Хранилище',v:fmt(sz(data))}))+G('Сброс',R({i:'reset',t:'Сбросить оформление',s:'Тема, шрифт, сообщения, панель',go:'stResetLook()',chev:1})+R({i:'trash',t:'Удалить все данные',s:'Чаты, подарки и настройки на устройстве',go:'stResetAll()',chev:1,danger:1})),
+advanced:()=>G('О приложении',R({i:'info',t:'tread.',s:'Мессенджер-прототип: чаты, лента, подарки, плагины',v:'локально'})+R({i:'database',t:'Хранилище',v:fmt(sz(data))}))+G('Сброс',R({i:'reset',t:'Сбросить оформление',s:'Тема, шрифт, сообщения, панель',go:'stResetLook()',chev:1})+R({i:'trash',t:'Удалить все данные',s:'Чаты, подарки и настройки на устройстве',go:'stResetAll()',chev:1,danger:1}))+ (window.treadIsGoogleUser&&window.treadIsGoogleUser()?G('Аккаунт',R({i:'logout',t:'Выйти из аккаунта',s:'Завершить текущий сеанс Google',go:'treadSignOutToRegistration()',chev:1,danger:1})):''),
 premium:()=>`<div class="settings-premium"><div class="premium-mark">✦</div><div class="premium-copy"><b>Все функции открыты</b><span>Premium-возможности tread. пока бесплатны</span></div></div><div style="height:16px"></div>`+G('Возможности',R({i:'smile',t:'Анимированные стикеры',s:'Стикер рядом с именем во всех чатах',go:'openProfileStickerPicker()',chev:1})+R({i:'gift',t:'Коллекция подарков',s:'Слоёные анимированные подарки',go:'openProfileGifts()',chev:1})+R({i:'gem',t:'Кошелёк эликсов',s:'Подарки и поддержка сообщений',go:'openElixWallet()',chev:1})+R({i:'palette',t:'Расширенное оформление',s:'Темы, шрифты, фон и форма сообщений',go:"openSettingsPage('appearance')",chev:1}))
 };
 PAGES.energy=()=>{const st=S();return G('Режим',TG('eco',false,'Экономия энергии','Выключает анимации, размытие и анимацию стикеров','bolt').replace(/stToggle\('eco',false,this\)/,'stEco()').replace(/<div class="switch [^"]*">/,`<div class="switch ${st.eco?'on':''}">`))+G('Детали',PD(`<div class="st-sub">Анимации интерфейса</div>${SEG('motion',[['full','Полные'],['calm','Умеренные'],['off','Выкл']],'full')}`)+TG('blur',true,'Размытие','Стеклянные панели и шапки','blur')+TG('animStickers',true,'Анимированные стикеры и подарки','Показ движения в профилях и коллекции','sparkle'),'Системная настройка «уменьшить движение» тоже учитывается.')};
@@ -4039,6 +4041,12 @@ if(window.treadSupabaseReady()){
    const uid=window.treadCurrentUser.id;
    const {data:members,error:merr}=await sb.from('conversation_members').select('conversation_id').eq('user_id',uid);if(merr)throw merr;
    const ids=[...new Set((members||[]).map(x=>x.conversation_id))],set=new Set(ids);
+   if(currentChat?._remoteConversationId&&!set.has(currentChat._remoteConversationId)){
+    currentChat=null;
+    if(presenceChannel){try{await sb.removeChannel(presenceChannel)}catch(e){}presenceChannel=null;}
+    document.getElementById('screen-chat')?.classList.remove('on');
+    document.getElementById('screen-list')?.classList.add('on');
+   }
    data.chats=data.chats.filter(c=>!c._remoteConversationId||set.has(c._remoteConversationId));
    if(!ids.length){renderList();save();return;}
    const {data:convs,error:cerr}=await sb.from('conversations').select('id,created_at').in('id',ids);if(cerr)throw cerr;
@@ -4130,7 +4138,8 @@ if(window.treadSupabaseReady()){
  const oldDoDelete=window.doDelete;
  window.confirmDelete=function(id,type){
   const idArg=Number.isFinite(Number(id))?String(Number(id)):'null',kind=type==='channel'?'канал':'чат';
-  sheet('<div class="grip"></div><h2>Удалить '+kind+'?</h2><p style="text-align:center;color:var(--muted);margin-bottom:20px;font-size:13.5px">'+(type==='chat'?'Чат исчезнет из твоего списка. У собеседника он останется.':'Восстановить нельзя.')+'</p><div class="actions"><button class="btn sec" onclick="closeSheet()">Отмена</button><button class="btn pri" style="background:var(--danger)" onclick="doDelete('+idArg+',\''+type+'\')">Удалить</button></div>');
+  const description=type==='chat'?'Переписка и сообщения будут удалены у тебя и у собеседника. Это действие нельзя отменить.':'Восстановить нельзя.';
+  sheet('<div class="grip"></div><h2>Удалить '+kind+'?</h2><p style="text-align:center;color:var(--muted);margin-bottom:20px;font-size:13.5px">'+description+'</p><div class="actions"><button class="btn sec" onclick="closeSheet()">Отмена</button><button class="btn pri" style="background:var(--danger)" onclick="doDelete('+idArg+',\''+type+'\')">Удалить</button></div>');
  };
  window.doDelete=async function(id,type){
   if(type!=='chat')return oldDoDelete.apply(this,arguments);
@@ -4139,15 +4148,9 @@ if(window.treadSupabaseReady()){
    const sb=client(),uid=window.treadCurrentUser?.id;
    if(!sb||!uid){notify('Войди в аккаунт, чтобы удалить синхронизированный чат.');return;}
    try{
-    // Avoid DELETE ... RETURNING: returned rows are also subject to SELECT RLS.
-    const {error}=await sb.from('conversation_members').delete()
-     .eq('conversation_id',chat._remoteConversationId).eq('user_id',uid);
+    const {data:deleted,error}=await sb.rpc('delete_conversation_for_all',{p_conversation_id:chat._remoteConversationId});
     if(error)throw error;
-    // Verify separately that this user's membership is actually gone.
-    const {data:remaining,error:checkError}=await sb.from('conversation_members')
-     .select('conversation_id').eq('conversation_id',chat._remoteConversationId).eq('user_id',uid).maybeSingle();
-    if(checkError)throw checkError;
-    if(remaining){notify('Чат не удалён: сервер не удалил ваше участие. Проверьте права доступа.');return;}
+    if(deleted!==true){notify('Сервер не подтвердил удаление переписки.');return;}
     data.chats=data.chats.filter(c=>c!==chat);
     if(currentChat===chat){
      currentChat=null;
@@ -4155,8 +4158,8 @@ if(window.treadSupabaseReady()){
      document.getElementById('screen-chat')?.classList.remove('on');
      document.getElementById('screen-list')?.classList.add('on');
     }
-    save();closeSheet();renderList();haptic(20);notify('Чат удалён из твоего списка');return;
-   }catch(e){console.error('tread delete conversation',e);notify('Не удалось удалить чат: '+(e?.message||String(e)));return;}
+    save();closeSheet();renderList();haptic(20);notify('Переписка удалена у обоих участников');return;
+   }catch(e){console.error('tread delete conversation for all',e);notify('Не удалось удалить переписку: '+(e?.message||String(e)));return;}
   }
   return oldDoDelete.apply(this,arguments);
  };
@@ -4177,7 +4180,8 @@ if(window.treadSupabaseReady()){
  function subscribe(){
   const sb=client();if(!sb)return;if(channel)sb.removeChannel(channel);
   channel=sb.channel('tread-user-messages-'+window.treadCurrentUser.id)
-   .on('postgres_changes',{event:'*',schema:'public',table:'messages'},payload=>{const row=payload.new&&Object.keys(payload.new).length?payload.new:payload.old;const chat=data.chats.find(x=>x._remoteConversationId===row?.conversation_id);if(chat)refreshMessages(chat);})
+   .on('postgres_changes',{event:'*',schema:'public',table:'messages'},payload=>{const row=payload.new&&Object.keys(payload.new).length?payload.new:payload.old;const chat=data.chats.find(x=>x._remoteConversationId===row?.conversation_id);if(payload.eventType==='DELETE')loadConversations();else if(chat)refreshMessages(chat);})
+   .on('postgres_changes',{event:'*',schema:'public',table:'conversation_members',filter:'user_id=eq.'+window.treadCurrentUser.id},()=>loadConversations())
    .on('postgres_changes',{event:'*',schema:'public',table:'message_reactions'},payload=>{const row=payload.new&&Object.keys(payload.new).length?payload.new:payload.old;if(!row?.message_id)return;const chat=data.chats.find(x=>(x.messages||[]).some(m=>m._remoteId===row.message_id));if(chat)refreshMessages(chat);})
    .subscribe();
  }
@@ -4231,45 +4235,8 @@ if(window.treadSupabaseReady()){
 </script>
 
 
-<style id="tread-account-controls-fixed-style">
-.tread-signout-setting{display:flex;align-items:center;gap:12px;width:100%;padding:15px;margin:12px 0;border:1px solid rgba(220,90,90,.28);border-radius:16px;background:rgba(220,70,70,.08);color:var(--text);font:inherit;text-align:left;cursor:pointer}
-.tread-signout-setting:active{transform:scale(.99)}.tread-signout-setting:disabled{opacity:.55}.tread-signout-setting small{display:block;color:var(--muted);margin-top:3px}
-</style>
-<script id="tread-account-controls-fixed">
-(()=>{
- const isGoogle=()=>typeof window.treadIsGoogleUser==='function'&&window.treadIsGoogleUser();
- function makeButton(cls){
-  const btn=document.createElement('button');btn.type='button';btn.className=cls;
-  btn.innerHTML='<span style="font-size:20px">↪</span><span style="flex:1"><b>Выйти из аккаунта</b><small>Завершить текущий сеанс Google</small></span>';
-  btn.addEventListener('click',async()=>{if(!isGoogle())return;btn.disabled=true;try{await window.treadSignOutToRegistration();}catch(e){btn.disabled=false;if(typeof toast==='function')toast('Не удалось выйти: '+(e?.message||e));}});
-  return btn;
- }
- function sync(){
-  const root=document.querySelector('#myProfileContent .st-wrap');
-  if(root){
-   if(!isGoogle())root.querySelectorAll('.tread-signout-setting').forEach(x=>x.remove());
-   else if(!root.querySelector('.tread-signout-setting')){const btn=makeButton('tread-signout-setting');const search=root.querySelector('.st-search');if(search)search.insertAdjacentElement('beforebegin',btn);else root.appendChild(btn);}
-  }
-  const sub=document.querySelector('#myProfileContent .settings-subpage[data-settings-page="advanced"]');
-  if(sub){
-   if(!isGoogle())sub.querySelectorAll('.tread-advanced-signout,button[onclick*="treadSignOutToRegistration"]').forEach(x=>x.remove());
-   else if(!sub.querySelector('.tread-advanced-signout')){const wrap=document.createElement('div');wrap.className='profile-section';wrap.style.marginTop='14px';const btn=makeButton('setting-row tread-advanced-signout');btn.style.cssText='width:100%;color:#e06464;background:transparent;border:0;text-align:left';wrap.appendChild(btn);sub.appendChild(wrap);}
-  }
- }
- function observe(){
-  const root=document.getElementById('myProfileContent');
-  if(root&&!root.dataset.treadLogoutObserver){root.dataset.treadLogoutObserver='1';new MutationObserver(()=>{if(sync.busy)return;sync.busy=true;queueMicrotask(()=>{sync();sync.busy=false;});}).observe(root,{childList:true,subtree:true});}
-  sync();
- }
- const oldRender=window.renderMenu;if(typeof oldRender==='function')window.renderMenu=function(){oldRender.apply(this,arguments);observe();};
- const oldSettings=window.openSettingsPage;if(typeof oldSettings==='function')window.openSettingsPage=function(){const result=oldSettings.apply(this,arguments);observe();return result;};
- window.addEventListener('tread-auth-changed',()=>{[0,80,220,500].forEach(delay=>setTimeout(()=>{observe();sync();},delay));});
- // Профиль может дорисовываться асинхронно уже после события входа. Следим за его DOM, чтобы кнопка выхода появлялась без перезапуска приложения.
- const profileRoot=document.getElementById('myProfileContent');
- if(profileRoot&&!profileRoot.dataset.treadLogoutRootObserver){profileRoot.dataset.treadLogoutRootObserver='1';new MutationObserver(()=>{sync();}).observe(profileRoot,{childList:true,subtree:true});}
- if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',observe,{once:true});else observe();
-})();
-</script>
+
+
 
 <style id="tread-keyboard-chat-fix">
 #screen-chat{--tread-kb:0px}
