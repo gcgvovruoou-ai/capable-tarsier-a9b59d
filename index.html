@@ -1778,8 +1778,8 @@ function reactionVisual(e){return String(e).startsWith('stk:')?(window.stk?windo
 // ДЕЙСТВИЯ С СООБЩЕНИЕМ
 function openMsgActions(id){
   const parent=findTopParent(currentChat,id);
-  const m=parent?.id===id?parent:parent?.replies?.find(r=>r.id===id);if(!m)return;
-  const isRoot=parent.id===id,canThread=currentChat.type==='group';
+  const m=String(parent?.id)===String(id)?parent:parent?.replies?.find(r=>String(r.id)===String(id));if(!m)return;
+  const isRoot=String(parent.id)===String(id),canThread=currentChat.type==='group';
   sheet(`<div class="grip"></div><h2>${esc(m.author)}</h2>
     ${m.gift?'':`<div class="sitem" onclick="closeSheet();startChatReply(${id})"><span class="si">↩</span>Ответить</div><div class="sitem" onclick="closeSheet();beginQuoteSelection(${id})"><span class="si">❞</span>Ответить на фрагмент</div><div class="sitem" onclick="closeSheet();beginMultiSelect(${id})"><span class="si">☑</span>Выбрать несколько</div><div class="sitem" onclick="closeSheet();openMessageForward(${id})"><span class="si">↗</span>Переслать</div>`}
     ${canThread&&isRoot?`<div class="sitem" onclick="closeSheet();toggleInlineThread(${id})"><span class="si">💬</span>${openThreads[id]?'Свернуть ответы':'Показать ответы'}</div>`:''}
@@ -3022,7 +3022,7 @@ window.sendFeedPostToChat=function(cid,channelId,postId,silent=false){
 };
 function hideFeedPost(t){const tools=data.settings.treadTools||(data.settings.treadTools={}),hidden=tools.feedHidden||(tools.feedHidden=[]);if(!hidden.some(x=>x.cid===t.channel.id&&x.pid===t.id))hidden.push({cid:t.channel.id,pid:t.id});save();closePop();renderList();toast('Публикация скрыта — будем показывать меньше похожего');haptic()}
 function actions(t){const A=[],o=t.obj;
- if(t.kind==='chat'){const par=findTopParent(currentChat,t.id),root=par&&par.id===t.id;if(!o.gift){A.push(['↗','Переслать',()=>openMessageForward(t.id)]);A.push(['☑','Выбрать несколько',()=>beginMultiSelect(t.id)]);A.push(['↩','Ответить',()=>startChatReply(t.id)])};
+ if(t.kind==='chat'){const par=findTopParent(currentChat,t.id),root=par&&String(par.id)===String(t.id);if(!o.gift){A.push(['↗','Переслать',()=>openMessageForward(t.id)]);A.push(['☑','Выбрать несколько',()=>beginMultiSelect(t.id)]);A.push(['↩','Ответить',()=>startChatReply(t.id)])};
   if(root&&currentChat.type==='group')A.push(['💬',openThreads[t.id]?'Свернуть ответы':'Показать ответы',()=>toggleInlineThread(t.id)]);
   if(root)A.push(['📌',o.pinned?'Снять закреп':'Закрепить',()=>togglePin(t.id)]);
   A.push(['📋','Копировать',()=>copyMsg(t.id)]);A.push(['×','Удалить',()=>deleteMsg(t.id),1])}
