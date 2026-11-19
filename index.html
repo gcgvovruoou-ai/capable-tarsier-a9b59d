@@ -4193,6 +4193,20 @@ if(window.treadSupabaseReady()){
    finally{if(peerChannel){try{await sb.removeChannel(peerChannel)}catch(e){}}}
   }
  }
+ async function findDirectPairConversationIds(sb,uid,peerId){
+  const {data:mine,error:mineError}=await sb.from('conversation_members').select('conversation_id').eq('user_id',uid);
+  if(mineError)throw mineError;
+  const ids=[...new Set((mine||[]).map(x=>x.conversation_id).filter(Boolean))];
+  if(!ids.length)return [];
+  const {data:rows,error}=await sb.from('conversation_members').select('conversation_id,user_id').in('conversation_id',ids);
+  if(error)throw error;
+  const membersByConversation=new Map();
+  for(const row of rows||[]){
+   if(!membersByConversation.has(row.conversation_id))membersByConversation.set(row.conversation_id,new Set());
+   membersByConversation.get(row.conversation_id).add(row.user_id);
+  }
+  return [...membersByConversation].filter(([,members])=>members.size===2&&members.has(uid)&&members.has(peerId)).map(([id])=>id);
+ }
  const oldDoDelete=window.doDelete;
  window.confirmDelete=function(id,type){
   const idArg=JSON.stringify(String(id)),kind=type==='channel'?'канал':'чат';
@@ -4210,17 +4224,13 @@ if(window.treadSupabaseReady()){
     const {data:members,error:membersError}=await sb.from('conversation_members').select('user_id').eq('conversation_id',chat._remoteConversationId);
     if(membersError)throw membersError;
     const peerIds=[...new Set((members||[]).map(m=>m.user_id).filter(x=>x&&x!==uid))];
-    // У одного собеседника могли накопиться несколько серверных direct conversations.
-    // Удаляем все общие переписки этой пары, иначе loadConversations покажет оставшиеся снова.
-    const {data:mine,error:mineError}=await sb.from('conversation_members').select('conversation_id').eq('user_id',uid);
-    if(mineError)throw mineError;
-    const mineIds=[...new Set((mine||[]).map(x=>x.conversation_id))];
+    // Удаляем дубли только для личной переписки с теми же двумя участниками.
+    // Группы и другие общие чаты не должны попадать в список дубликатов.
     const conversationIds=new Set([chat._remoteConversationId]);
-    for(const peerId of peerIds){
-     if(!mineIds.length)continue;
-     const {data:peerMemberships,error:peerError}=await sb.from('conversation_members').select('conversation_id').eq('user_id',peerId).in('conversation_id',mineIds);
-     if(peerError)throw peerError;
-     for(const row of peerMemberships||[])conversationIds.add(row.conversation_id);
+    const isDirect=chat.type==='direct'||chat.type==='personal';
+    if(isDirect&&peerIds.length===1){
+     const duplicates=await findDirectPairConversationIds(sb,uid,peerIds[0]);
+     for(const conversationId of duplicates)conversationIds.add(conversationId);
     }
     for(const conversationId of conversationIds){
      const {data:deleted,error}=await sb.rpc('delete_conversation_for_all',{p_conversation_id:conversationId});
@@ -4250,21 +4260,16 @@ if(window.treadSupabaseReady()){
      const matches=(profiles||[]).filter(p=>p.id!==uid&&[p.display_name,p.username].some(v=>v&&labels.includes(String(v).trim().toLocaleLowerCase())));
      if(matches.length===1){
       const peerId=matches[0].id;
-      const {data:mine,error:mineError}=await sb.from('conversation_members').select('conversation_id').eq('user_id',uid);
-      if(mineError)throw mineError;
-      const ids=[...new Set((mine||[]).map(x=>x.conversation_id))];
-      if(ids.length){
-       const {data:peerMemberships,error:peerError}=await sb.from('conversation_members').select('conversation_id').eq('user_id',peerId).in('conversation_id',ids);
-       if(peerError)throw peerError;
-       const peerConversations=[...new Set((peerMemberships||[]).map(x=>x.conversation_id))];
-       if(peerConversations.length){
+      const peerConversations=await findDirectPairConversationIds(sb,uid,peerId);
+      if(peerConversations.length){
         for(const conversationId of peerConversations){
          const {data:deleted,error}=await sb.rpc('delete_conversation_for_all',{p_conversation_id:conversationId});
          if(error)throw error;
          if(deleted!==true)throw new Error('Сервер не подтвердил удаление одной из переписок');
+         await notifyPeerConversationDeleted(sb,[peerId],conversationId);
         }
-        await notifyPeerConversationDeleted(sb,[peerId],peerConversations[0]);
-        data.chats=data.chats.filter(c=>c!==chat);
+        const deletedIds=new Set(peerConversations);
+        data.chats=data.chats.filter(c=>c!==chat&&!deletedIds.has(c._remoteConversationId));
         if(currentChat===chat){
          currentChat=null;
          if(presenceChannel){try{await sb.removeChannel(presenceChannel)}catch(e){}presenceChannel=null;}
