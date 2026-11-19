@@ -3846,6 +3846,10 @@ window.TREAD_SUPABASE_URL = 'https://nonxdybebpicxnhkmfzg.supabase.co';
 window.TREAD_SUPABASE_ANON_KEY = 'sb_publishable_cYVvVz6ebzeN3gGd6GTCmQ_T4WBE8ub';
 window.treadSupabase = null;
 window.treadCurrentUser = null;
+window.treadIsGoogleUser = function(){
+ const u=window.treadCurrentUser;
+ return !!u&&(u.app_metadata?.provider==='google'||(Array.isArray(u.app_metadata?.providers)&&u.app_metadata.providers.includes('google'))||(Array.isArray(u.identities)&&u.identities.some(x=>x.provider==='google')));
+};
 window.treadSupabaseReady = function(){
   if(window.treadSupabase) return true;
   if(!window.supabase || !window.TREAD_SUPABASE_URL || !window.TREAD_SUPABASE_ANON_KEY) return false;
@@ -3941,7 +3945,7 @@ window.treadOnSignedIn = async function(user){
 };
 window.treadSignOut = async function(){
   if(!window.treadSupabaseReady())return;
-  const {error}=await window.treadSupabase.auth.signOut();
+  const {error}=await window.treadSupabase.auth.signOut({scope:'local'});
   if(error){console.error(error);throw error;}
   window.treadCurrentUser=null;
   window.treadResetGuestIdentity();
@@ -4007,174 +4011,169 @@ if(window.treadSupabaseReady()){
 
 <script id="tread-online-messaging-v1">
 (()=>{
-  const client=()=>window.treadSupabaseReady&&window.treadSupabaseReady()&&window.treadCurrentUser?window.treadSupabase:null;
-  let channel=null, loading=false;
-  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const notify=t=>{if(typeof toast==='function')toast(t);else console.info(t)};
-  const remoteToLocal=(r,profile)=>({id:'db_'+r.id,_remoteId:r.id,author:profile?.display_name||profile?.username||'Пользователь',text:r.body,createdAt:new Date(r.created_at).getTime(),out:r.sender_id===window.treadCurrentUser?.id,reactions:{},reactionsBy:{},replies:[],replyToId:null});
-  async function refreshMessages(chat=currentChat){
-    const sb=client(); if(!sb||!chat?._remoteConversationId)return;
-    const {data:rows,error}=await sb.from('messages').select('id,conversation_id,sender_id,body,created_at').eq('conversation_id',chat._remoteConversationId).order('created_at',{ascending:true}).limit(500);
-    if(error){console.error('tread messages load',error);notify('Не удалось загрузить сообщения: '+error.message);return;}
-    const ids=[...new Set((rows||[]).map(x=>x.sender_id))];
-    let profiles=[];
-    if(ids.length){const p=await sb.from('profiles').select('id,display_name,username').in('id',ids);if(!p.error)profiles=p.data||[];}
-    const byId=new Map(profiles.map(p=>[p.id,p]));
-    const old=chat.messages||[];
-    const localOnly=old.filter(m=>!m._remoteId && !String(m.id).startsWith('db_'));
-    chat.messages=(rows||[]).map(r=>remoteToLocal(r,byId.get(r.sender_id))).concat(localOnly).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
-    if(currentChat===chat){renderMessages(chat.lastReadTs);renderPinBanner();}
-    save();
-  }
-  async function loadConversations(){
-    const sb=client(); if(!sb||loading)return; loading=true;
-    try{
-      const uid=window.treadCurrentUser.id;
-      const {data:members,error:merr}=await sb.from('conversation_members').select('conversation_id').eq('user_id',uid);
-      if(merr)throw merr;
-      const ids=[...new Set((members||[]).map(x=>x.conversation_id))];
-      if(!ids.length)return;
-      const {data:convs,error:cerr}=await sb.from('conversations').select('id,created_at').in('id',ids);
-      if(cerr)throw cerr;
-      for(const c of (convs||[])){
-        let local=data.chats.find(x=>x._remoteConversationId===c.id);
-        if(!local){
-          const {data:peers,error:perr}=await sb.from('conversation_members').select('user_id').eq('conversation_id',c.id);
-          if(perr)throw perr;
-          const peerId=(peers||[]).map(x=>x.user_id).find(x=>x!==uid);
-          let person=null;if(peerId){const p=await sb.from('profiles').select('id,display_name,username,avatar_url').eq('id',peerId).maybeSingle();if(!p.error)person=p.data;}
-          local={id:'remote_'+c.id,_remoteConversationId:c.id,type:'direct',title:person?.display_name||person?.username||'Личный чат',peerUserId:peerId||null,messages:[],createdAt:new Date(c.created_at).getTime(),unread:0};
-          data.chats.push(local);
-        }
-        await refreshMessages(local);
-      }
-      renderList();
-    }catch(e){console.error('tread conversations load',e);notify('Ошибка загрузки чатов: '+e.message);}
-    finally{loading=false;}
-  }
-  const openingChats=new Map();
-  let presenceChannel=null, presenceChatId=null, typingTimer=null, typingStopTimer=null, remoteTyping=false;
-  function setRemotePresence(chat, state){
-    if(!chat)return;
-    chat._remotePresence=state;
-    if(currentChat===chat)paintRemotePresence(chat);
-  }
-  function paintRemotePresence(chat){
-    const el=document.getElementById('chatSub');if(!el||currentChat!==chat)return;
-    if(chat.type==='group'){el.textContent='Участники';return;}
-    if(chat._remotePresence==='typing'){
-      el.innerHTML='<span class="presence-typing">печатает…</span>';el.className='chat-title-sub presence';
-    }else if(chat._remotePresence==='online'){
-      el.innerHTML='<span class="presence-dot"></span><span class="presence-online">в сети</span>';el.className='chat-title-sub presence';
-    }else{
-      el.textContent='не в сети';el.className='chat-title-sub';
+ const client=()=>window.treadSupabaseReady&&window.treadSupabaseReady()&&window.treadCurrentUser?window.treadSupabase:null;
+ let channel=null,loading=false,presenceChannel=null,typingStopTimer=null;
+ const notify=t=>typeof toast==='function'?toast(t):console.info(t);
+ const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const idFromUuid=v=>Number.parseInt(String(v||'').replace(/-/g,'').slice(0,12),16)||Date.now();
+ const remoteToLocal=(r,p)=>({id:idFromUuid(r.id),_remoteId:r.id,_remoteConversationId:r.conversation_id,author:p?.display_name||p?.username||'Пользователь',text:r.body||'',createdAt:new Date(r.created_at).getTime(),out:r.sender_id===window.treadCurrentUser?.id,reactions:{},reactionsBy:{},replies:[],replyToId:r.reply_to_id?idFromUuid(r.reply_to_id):null});
+ async function refreshMessages(chat=currentChat){
+  const sb=client();if(!sb||!chat?._remoteConversationId)return;
+  const {data:rows,error}=await sb.from('messages').select('id,conversation_id,sender_id,body,created_at,reply_to_id').eq('conversation_id',chat._remoteConversationId).order('created_at',{ascending:true}).limit(500);
+  if(error){console.error(error);notify('Не удалось загрузить сообщения: '+error.message);return;}
+  const mids=(rows||[]).map(x=>x.id);let reactions=[];
+  if(mids.length){const rr=await sb.from('message_reactions').select('message_id,user_id,emoji').in('message_id',mids);if(rr.error){notify('Не удалось загрузить реакции: '+rr.error.message);return;}reactions=rr.data||[];}
+  const uids=[...new Set([...(rows||[]).map(x=>x.sender_id),...reactions.map(x=>x.user_id)].filter(Boolean))];let profiles=[];
+  if(uids.length){const pr=await sb.from('profiles').select('id,display_name,username,avatar_url').in('id',uids);if(!pr.error)profiles=pr.data||[];}
+  const byId=new Map(profiles.map(p=>[p.id,p])),byRemote=new Map(),byLocal=new Map();
+  const mapped=(rows||[]).map(r=>{const m=remoteToLocal(r,byId.get(r.sender_id));byRemote.set(r.id,m);byLocal.set(m.id,m);return m;});
+  for(const reaction of reactions){const m=byRemote.get(reaction.message_id);if(!m)continue;const p=byId.get(reaction.user_id);const name=reaction.user_id===window.treadCurrentUser?.id?data.me.name:(p?.display_name||p?.username||'Пользователь');m.reactions[reaction.emoji]=(m.reactions[reaction.emoji]||0)+1;m.reactionsBy[name]=reaction.emoji;}
+  const roots=[];for(const m of mapped){if(m.replyToId&&byLocal.has(m.replyToId)){byLocal.get(m.replyToId).replies.push(m);}else roots.push(m);}
+  const localOnly=(chat.messages||[]).filter(m=>!m._remoteId&&!String(m.id).startsWith('db_'));
+  chat.messages=roots.concat(localOnly).sort((x,y)=>(x.createdAt||0)-(y.createdAt||0));
+  if(currentChat===chat){renderMessages(chat.lastReadTs);renderPinBanner();}save();
+ }
+ async function loadConversations(){
+  const sb=client();if(!sb||loading)return;loading=true;
+  try{
+   const uid=window.treadCurrentUser.id;
+   const {data:members,error:merr}=await sb.from('conversation_members').select('conversation_id').eq('user_id',uid);if(merr)throw merr;
+   const ids=[...new Set((members||[]).map(x=>x.conversation_id))],set=new Set(ids);
+   data.chats=data.chats.filter(c=>!c._remoteConversationId||set.has(c._remoteConversationId));
+   if(!ids.length){renderList();save();return;}
+   const {data:convs,error:cerr}=await sb.from('conversations').select('id,created_at').in('id',ids);if(cerr)throw cerr;
+   for(const c of convs||[]){
+    let chat=data.chats.find(x=>x._remoteConversationId===c.id);
+    if(!chat){
+     const {data:peers,error:perr}=await sb.from('conversation_members').select('user_id').eq('conversation_id',c.id);if(perr)throw perr;
+     const peerId=(peers||[]).map(x=>x.user_id).find(x=>x!==uid);let person=null;
+     if(peerId){const p=await sb.from('profiles').select('id,display_name,username,avatar_url').eq('id',peerId).maybeSingle();if(!p.error)person=p.data;}
+     chat={id:idFromUuid(c.id),_remoteConversationId:c.id,type:'direct',title:person?.display_name||person?.username||'Личный чат',peerUserId:peerId||null,messages:[],createdAt:new Date(c.created_at).getTime(),unread:0};data.chats.push(chat);
     }
+    await refreshMessages(chat);
+   }
+   renderList();save();
+  }catch(e){console.error('tread conversations load',e);notify('Ошибка загрузки чатов: '+e.message);}
+  finally{loading=false;}
+ }
+ function paintPresence(chat){
+  const el=document.getElementById('chatSub');if(!el||currentChat!==chat)return;
+  if(chat._remotePresence==='typing'){el.innerHTML='<span class="presence-typing">печатает…</span>';el.className='chat-title-sub presence';}
+  else if(chat._remotePresence==='online'){el.innerHTML='<span class="presence-dot"></span><span class="presence-online">в сети</span>';el.className='chat-title-sub presence';}
+  else{el.textContent='не в сети';el.className='chat-title-sub';}
+ }
+ async function openPresence(chat){
+  const sb=client();if(!sb||!chat?._remoteConversationId)return;
+  if(presenceChannel){try{await sb.removeChannel(presenceChannel)}catch(e){}presenceChannel=null;}
+  const pc=sb.channel('tread-presence-'+chat._remoteConversationId,{config:{presence:{key:window.treadCurrentUser.id},broadcast:{self:false}}});presenceChannel=pc;
+  pc.on('presence',{event:'sync'},()=>{const state=pc.presenceState();const peers=Object.entries(state).filter(([k])=>k!==window.treadCurrentUser.id).flatMap(([,v])=>v||[]);const peer=peers[0];chat._remotePresence=peer?.typing?'typing':peer?'online':'offline';paintPresence(chat);})
+   .on('broadcast',{event:'typing'},({payload})=>{if(payload?.user_id===window.treadCurrentUser.id)return;if(payload?.typing){chat._remotePresence='typing';paintPresence(chat);clearTimeout(typingStopTimer);typingStopTimer=setTimeout(()=>{chat._remotePresence='online';paintPresence(chat);},3500);}else if(chat._remotePresence==='typing'){chat._remotePresence='online';paintPresence(chat);}})
+   .subscribe(async status=>{if(status==='SUBSCRIBED')await pc.track({user_id:window.treadCurrentUser.id,typing:false,online_at:new Date().toISOString()});});
+ }
+ function sendTyping(typing){if(!presenceChannel)return;presenceChannel.track({user_id:window.treadCurrentUser.id,typing:!!typing,online_at:new Date().toISOString()});presenceChannel.send({type:'broadcast',event:'typing',payload:{user_id:window.treadCurrentUser.id,typing:!!typing}});}
+ function bindTyping(){
+  const input=document.getElementById('msgInput');if(!input||input.dataset.treadTypingBound)return;input.dataset.treadTypingBound='1';
+  input.addEventListener('input',()=>{if(!currentChat?._remoteConversationId)return;sendTyping(true);clearTimeout(typingStopTimer);typingStopTimer=setTimeout(()=>sendTyping(false),1800);});
+  input.addEventListener('blur',()=>sendTyping(false));
+ }
+ bindTyping();
+ window.treadStartDirectChat=async function(peerId){
+  const sb=client();if(!sb){notify('Сначала войди через Google');return;}if(!peerId||peerId===window.treadCurrentUser.id)return;
+  const {data:id,error}=await sb.rpc('create_direct_conversation',{peer_user_id:peerId});if(error){notify('Не удалось открыть чат: '+error.message);return;}
+  await loadConversations();let chat=data.chats.find(x=>x._remoteConversationId===id);
+  if(!chat){const p=await sb.from('profiles').select('display_name,username').eq('id',peerId).maybeSingle();chat={id:idFromUuid(id),_remoteConversationId:id,type:'direct',title:p.data?.display_name||p.data?.username||'Личный чат',peerUserId:peerId,messages:[],createdAt:Date.now(),unread:0};data.chats.push(chat);save();renderList();}
+  openChat(chat.id);
+ };
+ const oldOpenChat=window.openChat;
+ window.openChat=function(id){oldOpenChat.apply(this,arguments);bindTyping();if(currentChat?._remoteConversationId){refreshMessages(currentChat);openPresence(currentChat);}else if(presenceChannel){client()?.removeChannel(presenceChannel);presenceChannel=null;}};
+ const oldSend=window.sendMessage;
+ window.sendMessage=async function(){
+  const chat=currentChat,sb=client(),input=document.getElementById('msgInput'),body=input?.value?.trim()||'';
+  if(chat?._remoteConversationId&&sb){
+   if(pendingImage?.value||pendingAudio?.value){notify('В синхронизированных чатах пока доступны текстовые сообщения и ответы.');return;}
+   if(!body)return;let replyId=null;if(replyTo){const target=findMsgInChat(chat,replyTo.id);replyId=target?._remoteId||null;}
+   const {error}=await sb.from('messages').insert({conversation_id:chat._remoteConversationId,sender_id:window.treadCurrentUser.id,body,reply_to_id:replyId});
+   if(error){notify('Сообщение не отправлено: '+error.message);return;}
+   if(input){input.value='';input.style.height='auto';}cancelChatReply();clearPendingImage();pendingAudio.value=null;await refreshMessages(chat);scrollToBottom();return;
   }
-  async function openPresence(chat){
-    const sb=client();if(!sb||!chat?._remoteConversationId)return;
-    if(presenceChannel){try{await sb.removeChannel(presenceChannel)}catch(e){}presenceChannel=null;}
-    presenceChatId=chat._remoteConversationId;
-    const channelPresence=sb.channel('tread-presence-'+chat._remoteConversationId,{config:{presence:{key:window.treadCurrentUser.id},broadcast:{self:false}}});
-    presenceChannel=channelPresence;
-    channelPresence.on('presence',{event:'sync'},()=>{
-      const state=channelPresence.presenceState();
-      const peers=Object.entries(state).filter(([key])=>key!==window.treadCurrentUser.id).flatMap(([,items])=>items||[]);
-      const peer=peers[0];setRemotePresence(chat,peer?.typing?'typing':peer?'online':'offline');
-    }).on('broadcast',{event:'typing'},({payload})=>{
-      if(payload?.user_id===window.treadCurrentUser.id)return;
-      if(payload?.typing){setRemotePresence(chat,'typing');clearTimeout(typingStopTimer);typingStopTimer=setTimeout(()=>setRemotePresence(chat,'online'),3500);}
-      else if(chat._remotePresence==='typing')setRemotePresence(chat,'online');
-    }).subscribe(async status=>{
-      if(status==='SUBSCRIBED'){
-        await channelPresence.track({user_id:window.treadCurrentUser.id,typing:false,online_at:new Date().toISOString()});
-      }
-    });
+  return oldSend.apply(this,arguments);
+ };
+ const oldToggle=window.toggleReact;
+ window.toggleReact=async function(id,emoji){
+  const chat=currentChat,sb=client(),m=findMsgInChat(chat,id);
+  if(chat?._remoteConversationId&&sb&&m?._remoteId){
+   const existing=await sb.from('message_reactions').select('emoji').eq('message_id',m._remoteId).eq('user_id',window.treadCurrentUser.id).maybeSingle();
+   if(existing.error){notify('Не удалось проверить реакцию: '+existing.error.message);return;}
+   if(existing.data?.emoji===emoji){const del=await sb.from('message_reactions').delete().eq('message_id',m._remoteId).eq('user_id',window.treadCurrentUser.id);if(del.error){notify('Не удалось убрать реакцию: '+del.error.message);return;}}
+   else{if(existing.data){const del=await sb.from('message_reactions').delete().eq('message_id',m._remoteId).eq('user_id',window.treadCurrentUser.id);if(del.error){notify('Не удалось изменить реакцию: '+del.error.message);return;}}
+    const add=await sb.from('message_reactions').insert({message_id:m._remoteId,user_id:window.treadCurrentUser.id,emoji});if(add.error){notify('Не удалось поставить реакцию: '+add.error.message);return;}}
+   await refreshMessages(chat);haptic();return;
   }
-  function sendTypingState(typing){
-    if(!presenceChannel)return;
-    presenceChannel.track({user_id:window.treadCurrentUser.id,typing:!!typing,online_at:new Date().toISOString()});
-    presenceChannel.send({type:'broadcast',event:'typing',payload:{user_id:window.treadCurrentUser.id,typing:!!typing}});
+  return oldToggle.apply(this,arguments);
+ };
+ const oldDeleteMsg=window.deleteMsg;
+ window.deleteMsg=async function(id){
+  const chat=currentChat,sb=client(),m=findMsgInChat(chat,id);
+  if(chat?._remoteConversationId&&m?._remoteId){
+   if(!confirm('Удалить своё сообщение?'))return;if(!m.out){notify('Удалять можно только свои сообщения.');return;}if(!sb){notify('Нет соединения с сервером.');return;}
+   const {error}=await sb.from('messages').delete().eq('id',m._remoteId);if(error){notify('Не удалось удалить сообщение: '+error.message);return;}
+   await refreshMessages(chat);renderPinBanner();haptic();notify('Сообщение удалено');return;
   }
-  function bindTypingInput(){
-    const input=document.getElementById('msgInput');if(!input||input.dataset.treadTypingBound)return;
-    input.dataset.treadTypingBound='1';
-    input.addEventListener('input',()=>{
-      if(!currentChat?._remoteConversationId)return;
-      sendTypingState(true);clearTimeout(typingStopTimer);
-      typingStopTimer=setTimeout(()=>sendTypingState(false),1800);
-    });
-    input.addEventListener('blur',()=>sendTypingState(false));
+  return oldDeleteMsg.apply(this,arguments);
+ };
+ const oldEdit=window.editOwnMessage;
+ if(typeof oldEdit==='function')window.editOwnMessage=async function(id){
+  const chat=currentChat,sb=client(),m=findMsgInChat(chat,id);
+  if(chat?._remoteConversationId&&m?._remoteId){if(!m.out){notify('Изменять можно только свои сообщения.');return;}const next=prompt('Измени сообщение',m.text||'');if(next===null)return;if(!next.trim()){notify('Сообщение не может быть пустым.');return;}const {error}=await sb.from('messages').update({body:next.trim()}).eq('id',m._remoteId);if(error){notify('Не удалось изменить сообщение: '+error.message);return;}await refreshMessages(chat);notify('Сообщение изменено');return;}
+  return oldEdit.apply(this,arguments);
+ };
+ const oldDoDelete=window.doDelete;
+ window.confirmDelete=function(id,type){
+  const idArg=Number.isFinite(Number(id))?String(Number(id)):'null',kind=type==='channel'?'канал':'чат';
+  sheet('<div class="grip"></div><h2>Удалить '+kind+'?</h2><p style="text-align:center;color:var(--muted);margin-bottom:20px;font-size:13.5px">'+(type==='chat'?'Чат исчезнет из твоего списка. У собеседника он останется.':'Восстановить нельзя.')+'</p><div class="actions"><button class="btn sec" onclick="closeSheet()">Отмена</button><button class="btn pri" style="background:var(--danger)" onclick="doDelete('+idArg+',\''+type+'\')">Удалить</button></div>');
+ };
+ window.doDelete=async function(id,type){
+  if(type!=='chat')return oldDoDelete.apply(this,arguments);
+  const chat=data.chats.find(c=>String(c.id)===String(id));
+  if(chat?._remoteConversationId){
+   const sb=client();if(!sb){notify('Войди в аккаунт, чтобы удалить синхронизированный чат.');return;}
+   const {data:deleted,error}=await sb.from('conversation_members').delete().eq('conversation_id',chat._remoteConversationId).eq('user_id',window.treadCurrentUser.id).select('conversation_id');
+   if(error){notify('Не удалось удалить чат: '+error.message);return;}if(!deleted?.length){notify('Чат не удалён: нет доступа к нему.');return;}
+   data.chats=data.chats.filter(c=>c!==chat);if(currentChat===chat){currentChat=null;document.getElementById('screen-chat')?.classList.remove('on');document.getElementById('screen-list')?.classList.add('on');}
+   save();closeSheet();renderList();haptic(20);notify('Чат удалён из твоего списка');return;
   }
-  bindTypingInput();
-  window.treadStartDirectChat=async function(peerId){
-    const sb=client();if(!sb){notify('Сначала войди через Google');return;}
-    if(!peerId||peerId===window.treadCurrentUser.id)return;
-    if(openingChats.has(peerId)){await openingChats.get(peerId);return;}
-    const task=(async()=>{
-      const {data:id,error}=await sb.rpc('create_direct_conversation',{peer_user_id:peerId});
-      if(error){notify('Не удалось открыть чат: '+error.message);return;}
-      await loadConversations();
-      let chat=data.chats.find(x=>x._remoteConversationId===id);
-      if(!chat){const p=await sb.from('profiles').select('display_name,username').eq('id',peerId).maybeSingle();chat={id:'remote_'+id,_remoteConversationId:id,type:'direct',title:p.data?.display_name||p.data?.username||'Личный чат',peerUserId:peerId,messages:[],createdAt:Date.now(),unread:0};data.chats.push(chat);save();renderList();}
-      openChat(chat.id);
-    })();
-    openingChats.set(peerId,task);
-    try{await task;}finally{openingChats.delete(peerId);}
-  };
-    const sb=client();if(!sb){notify('Сначала войди через Google');return;}
-    if(!peerId||peerId===window.treadCurrentUser.id)return;
-    const {data:id,error}=await sb.rpc('create_direct_conversation',{peer_user_id:peerId});
-    if(error){notify('Не удалось создать чат: '+error.message);return;}
-    await loadConversations();
-    let chat=data.chats.find(x=>x._remoteConversationId===id);
-    if(!chat){const p=await sb.from('profiles').select('display_name,username').eq('id',peerId).maybeSingle();chat={id:'remote_'+id,_remoteConversationId:id,type:'direct',title:p.data?.display_name||p.data?.username||'Личный чат',peerUserId:peerId,messages:[],createdAt:Date.now(),unread:0};data.chats.push(chat);save();renderList();}
-    openChat(chat.id);
-  };
-  const oldOpenChat=window.openChat;
-  window.openChat=function(id){
-    oldOpenChat.apply(this,arguments);
-    bindTypingInput();
-    if(currentChat?._remoteConversationId){refreshMessages(currentChat);openPresence(currentChat);}
-    else if(presenceChannel){client()?.removeChannel(presenceChannel);presenceChannel=null;}
-  };
-  const oldSend=window.sendMessage;
-  window.sendMessage=async function(){
-    const chat=currentChat,sb=client(),input=document.getElementById('msgInput');
-    const body=input?.value?.trim()||'';
-    if(chat?._remoteConversationId && sb && body && !pendingImage?.value && !pendingAudio?.value){
-      const {error}=await sb.from('messages').insert({conversation_id:chat._remoteConversationId,sender_id:window.treadCurrentUser.id,body});
-      if(error){notify('Сообщение не отправлено: '+error.message);return;}
-      if(input){input.value='';input.style.height='auto';}
-      await refreshMessages(chat);scrollToBottom();return;
-    }
-    if(chat?._remoteConversationId && sb && (pendingImage?.value||pendingAudio?.value)){
-      notify('В онлайн-чатах пока доступны текстовые сообщения.');return;
-    }
-    return oldSend.apply(this,arguments);
-  };
-  const oldSearch=window.treadSearchPeople;
-  window.treadSearchPeople=async function(){
-    const sb=client();const q=(document.getElementById('searchInput')?.value||'').trim();const el=document.getElementById('searchResults');
-    if(!sb||!q)return oldSearch.apply(this,arguments);
-    const {data:{session}}=await sb.auth.getSession();if(!session)return oldSearch.apply(this,arguments);
-    const safe=q.replace(/[%,()\\]/g,' ').trim();
-    const {data,error}=await sb.from('profiles').select('id,username,display_name,avatar_url').or('username.ilike.%'+safe+'%,display_name.ilike.%'+safe+'%').neq('id',session.user.id).limit(30);
-    if(error){el.innerHTML='<div class="empty">Ошибка поиска: '+esc(error.message)+'</div>';return;}
-    if(!data?.length){el.innerHTML='<div class="empty"><div class="empty-title">Никого не нашли</div>Попробуй другое имя или username.</div>';return;}
-    el.innerHTML=data.map(u=>`<button type="button" class="search-result" style="width:100%;text-align:left;border:0;background:transparent;color:inherit;cursor:pointer" onclick="treadStartDirectChat('${u.id}')"><div class="sr-author">${esc(u.display_name||u.username||'Пользователь')}</div><div class="sr-text">${u.username?'@'+esc(u.username):'Пользователь tread.'} · Написать</div></button>`).join('');
-  };
-  function subscribe(){
-    const sb=client();if(!sb)return;
-    if(channel)sb.removeChannel(channel);
-    channel=sb.channel('tread-user-messages-'+window.treadCurrentUser.id).on('postgres_changes',{event:'INSERT',schema:'public',table:'messages'},payload=>{
-      const row=payload.new;const chat=data.chats.find(x=>x._remoteConversationId===row.conversation_id);if(!chat)return;
-      if(chat.messages.some(m=>String(m._remoteId)===String(row.id)))return;
-      refreshMessages(chat);
-    }).subscribe();
-  }
-  window.addEventListener('tread-auth-changed',()=>{setTimeout(async()=>{if(client()){await loadConversations();subscribe();}},250)});
-  if(window.treadCurrentUser){setTimeout(async()=>{await loadConversations();subscribe();},600);}
-  window.treadOnlineReload=loadConversations;
+  return oldDoDelete.apply(this,arguments);
+ };
+ window.openChatMenu=function(){
+  const chat=currentChat;if(!chat)return;const id=JSON.stringify(chat.id);
+  sheet(`<div class="grip"></div><h2>${esc(chat.title)}</h2><div class="sitem" onclick="closeSheet();openNotif(${id},'chat')"><span class="si">🔔</span>Уведомления</div><div class="sitem danger" onclick="closeSheet();confirmDelete(${id},'chat')"><span class="si">×</span>Удалить чат</div><div class="actions"><button class="btn sec" onclick="closeSheet()">Отмена</button></div>`);
+ };
+ const oldSearch=window.treadSearchPeople;
+ window.treadSearchPeople=async function(){
+  const sb=client(),q=(document.getElementById('searchInput')?.value||'').trim(),el=document.getElementById('searchResults');
+  if(!sb||!q)return oldSearch.apply(this,arguments);const {data:{session}}=await sb.auth.getSession();if(!session)return oldSearch.apply(this,arguments);
+  const safe=q.replace(/[%,()\\]/g,' ').trim();
+  const {data,error}=await sb.from('profiles').select('id,username,display_name,avatar_url').or('username.ilike.%'+safe+'%,display_name.ilike.%'+safe+'%').neq('id',session.user.id).limit(30);
+  if(error){el.innerHTML='<div class="empty">Ошибка поиска: '+esc(error.message)+'</div>';return;}
+  if(!data?.length){el.innerHTML='<div class="empty"><div class="empty-title">Никого не нашли</div>Попробуй другое имя или username.</div>';return;}
+  el.innerHTML=data.map(u=>'<button type="button" class="search-result" style="width:100%;text-align:left;border:0;background:transparent;color:inherit;cursor:pointer" onclick="treadStartDirectChat(\''+u.id+'\')"><div class="sr-author">'+esc(u.display_name||u.username||'Пользователь')+'</div><div class="sr-text">'+(u.username?'@'+esc(u.username):'Пользователь tread.')+' · Написать</div></button>').join('');
+ };
+ function subscribe(){
+  const sb=client();if(!sb)return;if(channel)sb.removeChannel(channel);
+  channel=sb.channel('tread-user-messages-'+window.treadCurrentUser.id)
+   .on('postgres_changes',{event:'*',schema:'public',table:'messages'},payload=>{const row=payload.new&&Object.keys(payload.new).length?payload.new:payload.old;const chat=data.chats.find(x=>x._remoteConversationId===row?.conversation_id);if(chat)refreshMessages(chat);})
+   .on('postgres_changes',{event:'*',schema:'public',table:'message_reactions'},payload=>{const row=payload.new&&Object.keys(payload.new).length?payload.new:payload.old;if(!row?.message_id)return;const chat=data.chats.find(x=>(x.messages||[]).some(m=>m._remoteId===row.message_id));if(chat)refreshMessages(chat);})
+   .subscribe();
+ }
+ window.addEventListener('tread-auth-changed',()=>{
+  setTimeout(async()=>{if(client()){await loadConversations();subscribe();}else{
+   if(channel){try{await window.treadSupabase?.removeChannel(channel)}catch(e){}channel=null;}
+   if(presenceChannel){try{await window.treadSupabase?.removeChannel(presenceChannel)}catch(e){}presenceChannel=null;}
+   data.chats=data.chats.filter(c=>!c._remoteConversationId);save();renderList();
+  }},100);
+ });
+ if(window.treadCurrentUser)setTimeout(async()=>{await loadConversations();subscribe();},500);
+ window.treadOnlineReload=loadConversations;
 })();
 </script>
 
@@ -4216,59 +4215,41 @@ if(window.treadSupabaseReady()){
 </script>
 
 
-<script id="tread-account-signout-control">
+<style id="tread-account-controls-fixed-style">
+.tread-signout-setting{display:flex;align-items:center;gap:12px;width:100%;padding:15px;margin:12px 0;border:1px solid rgba(220,90,90,.28);border-radius:16px;background:rgba(220,70,70,.08);color:var(--text);font:inherit;text-align:left;cursor:pointer}
+.tread-signout-setting:active{transform:scale(.99)}.tread-signout-setting:disabled{opacity:.55}.tread-signout-setting small{display:block;color:var(--muted);margin-top:3px}
+</style>
+<script id="tread-account-controls-fixed">
 (()=>{
-  const add=()=>{
-    const root=document.querySelector('#myProfileContent .st-wrap');
-    if(!root)return;
-    root.querySelectorAll('.tread-signout-setting').forEach(x=>x.remove());
-    if(!window.treadCurrentUser)return;
-    const search=root.querySelector('.st-search');
-    const btn=document.createElement('button');
-    btn.type='button';btn.className='tread-signout-setting';
-    btn.style.cssText='display:flex;align-items:center;gap:12px;width:100%;padding:15px;margin:12px 0;border:1px solid rgba(220,90,90,.28);border-radius:16px;background:rgba(220,70,70,.08);color:var(--text);font:inherit;text-align:left;cursor:pointer';
-    btn.innerHTML='<span style="font-size:20px">↪</span><span style="flex:1"><b>Выйти из аккаунта</b><small style="display:block;color:var(--muted);margin-top:3px">Завершить текущий сеанс Google</small></span>';
-    btn.addEventListener('click',async()=>{
-      if(!confirm('Выйти из аккаунта tread?'))return;
-      btn.disabled=true;
-      try{await window.treadSignOut();if(typeof toast==='function')toast('Вы вышли из аккаунта');if(typeof window.renderMenu==='function')window.renderMenu();}
-      catch(e){btn.disabled=false;if(typeof toast==='function')toast('Не удалось выйти: '+e.message);}
-    });
-    if(search)search.insertAdjacentElement('beforebegin',btn);else root.appendChild(btn);
-  };
-  const render=window.renderMenu;
-  if(typeof render==='function')window.renderMenu=function(){render.apply(this,arguments);add();};
-  window.addEventListener('tread-auth-changed',()=>setTimeout(add,80));
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',add);else setTimeout(add,0);
-})();
-
-<script id="tread-advanced-signout-persistent">
-(()=>{
-  function ensureAdvancedSignout(){
-    const sub=document.querySelector('#myProfileContent .settings-subpage[data-settings-page="advanced"]');
-    if(!sub||sub.querySelector('.tread-advanced-signout'))return;
-    const wrap=document.createElement('div');
-    wrap.className='profile-section';
-    wrap.style.marginTop='14px';
-    const btn=document.createElement('button');
-    btn.type='button';
-    btn.className='setting-row tread-advanced-signout';
-    btn.style.cssText='width:100%;color:#e06464;background:transparent;border:0;text-align:left';
-    btn.innerHTML='<span class="ic">↪</span><span class="settings-nav-copy"><span class="lbl">Выйти из аккаунта</span><small>Завершить сеанс и вернуться к регистрации</small></span>';
-    btn.addEventListener('click',()=>window.treadSignOutToRegistration());
-    wrap.appendChild(btn);
-    sub.appendChild(wrap);
+ const isGoogle=()=>typeof window.treadIsGoogleUser==='function'&&window.treadIsGoogleUser();
+ function makeButton(cls){
+  const btn=document.createElement('button');btn.type='button';btn.className=cls;
+  btn.innerHTML='<span style="font-size:20px">↪</span><span style="flex:1"><b>Выйти из аккаунта</b><small>Завершить текущий сеанс Google</small></span>';
+  btn.addEventListener('click',async()=>{if(!isGoogle())return;btn.disabled=true;try{await window.treadSignOutToRegistration();}catch(e){btn.disabled=false;if(typeof toast==='function')toast('Не удалось выйти: '+(e?.message||e));}});
+  return btn;
+ }
+ function sync(){
+  const root=document.querySelector('#myProfileContent .st-wrap');
+  if(root){
+   if(!isGoogle())root.querySelectorAll('.tread-signout-setting').forEach(x=>x.remove());
+   else if(!root.querySelector('.tread-signout-setting')){const btn=makeButton('tread-signout-setting');const search=root.querySelector('.st-search');if(search)search.insertAdjacentElement('beforebegin',btn);else root.appendChild(btn);}
   }
-  const start=()=>{
-    const root=document.getElementById('myProfileContent');
-    if(!root)return;
-    new MutationObserver(ensureAdvancedSignout).observe(root,{childList:true,subtree:true});
-    ensureAdvancedSignout();
-  };
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});
-  else start();
+  const sub=document.querySelector('#myProfileContent .settings-subpage[data-settings-page="advanced"]');
+  if(sub){
+   if(!isGoogle())sub.querySelectorAll('.tread-advanced-signout,button[onclick*="treadSignOutToRegistration"]').forEach(x=>x.remove());
+   else if(!sub.querySelector('.tread-advanced-signout')){const wrap=document.createElement('div');wrap.className='profile-section';wrap.style.marginTop='14px';const btn=makeButton('setting-row tread-advanced-signout');btn.style.cssText='width:100%;color:#e06464;background:transparent;border:0;text-align:left';wrap.appendChild(btn);sub.appendChild(wrap);}
+  }
+ }
+ function observe(){
+  const root=document.getElementById('myProfileContent');
+  if(root&&!root.dataset.treadLogoutObserver){root.dataset.treadLogoutObserver='1';new MutationObserver(()=>{if(sync.busy)return;sync.busy=true;queueMicrotask(()=>{sync();sync.busy=false;});}).observe(root,{childList:true,subtree:true});}
+  sync();
+ }
+ const oldRender=window.renderMenu;if(typeof oldRender==='function')window.renderMenu=function(){oldRender.apply(this,arguments);observe();};
+ const oldSettings=window.openSettingsPage;if(typeof oldSettings==='function')window.openSettingsPage=function(){const result=oldSettings.apply(this,arguments);observe();return result;};
+ window.addEventListener('tread-auth-changed',()=>setTimeout(observe,80));
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',observe,{once:true});else observe();
 })();
-</script>
 </script>
 
 <style id="tread-keyboard-chat-fix">
