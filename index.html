@@ -4155,7 +4155,7 @@ if(window.treadSupabaseReady()){
   const idArg=JSON.stringify(String(id)),kind=type==='channel'?'канал':'чат';
   const chat=type==='chat'?data.chats.find(c=>String(c.id)===String(id)):null;
   const description=type==='chat'?(chat?._remoteConversationId?'Переписка и сообщения будут удалены у тебя и у собеседника. Это действие нельзя отменить.':'Этот старый чат и все его сообщения будут удалены с этого устройства. Это действие нельзя отменить.'):'Восстановить нельзя.';
-  sheet('<div class="grip"></div><h2>Удалить '+kind+'?</h2><p style="text-align:center;color:var(--muted);margin-bottom:20px;font-size:13.5px">'+description+'</p><div class="actions"><button class="btn sec" onclick="closeSheet()">Отмена</button><button class="btn pri" style="background:var(--danger)" onclick="doDelete('+idArg+',\\''+type+'\\')">Удалить</button></div>');
+  sheet('<div class="grip"></div><h2>Удалить '+kind+'?</h2><p style="text-align:center;color:var(--muted);margin-bottom:20px;font-size:13.5px">'+description+'</p><div class="actions"><button class="btn sec" onclick="closeSheet()">Отмена</button><button class="btn pri" style="background:var(--danger)" onclick="doDelete('+idArg+',\''+type+'\')">Удалить</button></div>');
  };
  window.doDelete=async function(id,type){
   if(type!=='chat')return oldDoDelete.apply(this,arguments);
