@@ -4051,13 +4051,26 @@ if(window.treadSupabaseReady()){
    if(!ids.length){renderList();save();return;}
    const {data:convs,error:cerr}=await sb.from('conversations').select('id,created_at').in('id',ids);if(cerr)throw cerr;
    for(const c of convs||[]){
+    const {data:peers,error:perr}=await sb.from('conversation_members').select('user_id').eq('conversation_id',c.id);if(perr)throw perr;
+    const peerId=(peers||[]).map(x=>x.user_id).find(x=>x!==uid)||null;
+    // Старые онлайн-чаты могли сохраниться локально без _remoteConversationId.
+    // Привязываем их к серверной переписке по стабильному ID или ID собеседника.
     let chat=data.chats.find(x=>x._remoteConversationId===c.id);
+    if(!chat)chat=data.chats.find(x=>!x._remoteConversationId&&(
+      String(x.id)===String(idFromUuid(c.id))||
+      (peerId&&String(x.peerUserId||x.userId||x.recipientId||'')===String(peerId))
+    ));
+    let person=null;
+    if(peerId){const p=await sb.from('profiles').select('id,display_name,username,avatar_url').eq('id',peerId).maybeSingle();if(!p.error)person=p.data;}
     if(!chat){
-     const {data:peers,error:perr}=await sb.from('conversation_members').select('user_id').eq('conversation_id',c.id);if(perr)throw perr;
-     const peerId=(peers||[]).map(x=>x.user_id).find(x=>x!==uid);let person=null;
-     if(peerId){const p=await sb.from('profiles').select('id,display_name,username,avatar_url').eq('id',peerId).maybeSingle();if(!p.error)person=p.data;}
-     chat={id:idFromUuid(c.id),_remoteConversationId:c.id,type:'direct',title:person?.display_name||person?.username||'Личный чат',peerUserId:peerId||null,messages:[],createdAt:new Date(c.created_at).getTime(),unread:0};data.chats.push(chat);
+     chat={id:idFromUuid(c.id),messages:[],createdAt:new Date(c.created_at).getTime(),unread:0};
+     data.chats.push(chat);
     }
+    chat._remoteConversationId=c.id;
+    chat.peerUserId=peerId;
+    chat.type='direct';
+    if(person?.display_name||person?.username)chat.title=person.display_name||person.username;
+    if(!Array.isArray(chat.messages))chat.messages=[];
     await refreshMessages(chat);
    }
    renderList();save();
