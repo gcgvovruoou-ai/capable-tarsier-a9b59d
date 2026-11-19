@@ -3873,7 +3873,7 @@ window.treadGoogleLogin = async function(){
   if(!window.treadSupabaseReady()){window.treadSetAuthStatus('Не удалось подключить сервер. Проверь интернет и настройки Supabase.');return;}
   window.treadSetAuthStatus('Открываем безопасный вход Google…');
   const redirectTo='https://capable-tarsier-a9b59d.netlify.app/';
-  const {error}=await window.treadSupabase.auth.signInWithOAuth({provider:'google',options:{redirectTo}});
+  const {error}=await window.treadSupabase.auth.signInWithOAuth({provider:'google',options:{redirectTo,queryParams:{prompt:'select_account'}}});
   if(error) window.treadSetAuthStatus('Ошибка Google-входа: '+error.message);
 };
 window.treadWelcomeInfo = async function(){
@@ -4263,7 +4263,10 @@ if(window.treadSupabaseReady()){
  }
  const oldRender=window.renderMenu;if(typeof oldRender==='function')window.renderMenu=function(){oldRender.apply(this,arguments);observe();};
  const oldSettings=window.openSettingsPage;if(typeof oldSettings==='function')window.openSettingsPage=function(){const result=oldSettings.apply(this,arguments);observe();return result;};
- window.addEventListener('tread-auth-changed',()=>setTimeout(observe,80));
+ window.addEventListener('tread-auth-changed',()=>{[0,80,220,500].forEach(delay=>setTimeout(()=>{observe();sync();},delay));});
+ // Профиль может дорисовываться асинхронно уже после события входа. Следим за его DOM, чтобы кнопка выхода появлялась без перезапуска приложения.
+ const profileRoot=document.getElementById('myProfileContent');
+ if(profileRoot&&!profileRoot.dataset.treadLogoutRootObserver){profileRoot.dataset.treadLogoutRootObserver='1';new MutationObserver(()=>{sync();}).observe(profileRoot,{childList:true,subtree:true});}
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',observe,{once:true});else observe();
 })();
 </script>
