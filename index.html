@@ -4210,18 +4210,32 @@ if(window.treadSupabaseReady()){
     const {data:members,error:membersError}=await sb.from('conversation_members').select('user_id').eq('conversation_id',chat._remoteConversationId);
     if(membersError)throw membersError;
     const peerIds=[...new Set((members||[]).map(m=>m.user_id).filter(x=>x&&x!==uid))];
-    const {data:deleted,error}=await sb.rpc('delete_conversation_for_all',{p_conversation_id:chat._remoteConversationId});
-    if(error)throw error;
-    if(deleted!==true){notify('Сервер не подтвердил удаление переписки.');return;}
-    await notifyPeerConversationDeleted(sb,peerIds,chat._remoteConversationId);
-    data.chats=data.chats.filter(c=>c!==chat);
+    // У одного собеседника могли накопиться несколько серверных direct conversations.
+    // Удаляем все общие переписки этой пары, иначе loadConversations покажет оставшиеся снова.
+    const {data:mine,error:mineError}=await sb.from('conversation_members').select('conversation_id').eq('user_id',uid);
+    if(mineError)throw mineError;
+    const mineIds=[...new Set((mine||[]).map(x=>x.conversation_id))];
+    const conversationIds=new Set([chat._remoteConversationId]);
+    for(const peerId of peerIds){
+     if(!mineIds.length)continue;
+     const {data:peerMemberships,error:peerError}=await sb.from('conversation_members').select('conversation_id').eq('user_id',peerId).in('conversation_id',mineIds);
+     if(peerError)throw peerError;
+     for(const row of peerMemberships||[])conversationIds.add(row.conversation_id);
+    }
+    for(const conversationId of conversationIds){
+     const {data:deleted,error}=await sb.rpc('delete_conversation_for_all',{p_conversation_id:conversationId});
+     if(error)throw error;
+     if(deleted!==true)throw new Error('Сервер не подтвердил удаление одной из переписок');
+     await notifyPeerConversationDeleted(sb,peerIds,conversationId);
+    }
+    data.chats=data.chats.filter(c=>c!==chat&&!conversationIds.has(c._remoteConversationId));
     if(currentChat===chat){
      currentChat=null;
      if(presenceChannel){try{await sb.removeChannel(presenceChannel)}catch(e){}presenceChannel=null;}
      document.getElementById('screen-chat')?.classList.remove('on');
      document.getElementById('screen-list')?.classList.add('on');
     }
-    save();closeSheet();renderList();haptic(20);notify('Переписка удалена у обоих участников');return;
+    save();closeSheet();renderList();haptic(20);notify('Переписка и её серверные дубли удалены у обоих участников');return;
    }catch(e){console.error('tread delete conversation for all',e);notify('Не удалось удалить переписку: '+(e?.message||String(e)));return;}
   }
   // Старые личные чаты могли хранить имя собеседника (peer/title), но не UUID.
