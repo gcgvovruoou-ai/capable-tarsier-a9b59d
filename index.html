@@ -1319,7 +1319,8 @@ function load(){try{
   data.me.name='Гость'; data.me.handle=''; data.me.username=''; data.me.avatar='Г'; data.me.image=null;
   if(!data.me.emoji) data.me.emoji='';
   if(!data.wallet)data.wallet={balance:1000,history:[],inventory:[]};if(!Array.isArray(data.wallet.history))data.wallet.history=[];if(!Array.isArray(data.wallet.inventory))data.wallet.inventory=[];data.wallet.unlimitedOwner=true;if(typeof data.wallet.balance!=='number')data.wallet.balance=1000;
-  seedDemoFeed();
+  // Demo-публикации больше не создаются автоматически; лента начинается пустой.
+  if(Array.isArray(data.channels)) data.channels.forEach(ch=>{ch.posts=[];});
   if(data.settings.modsEnabled===undefined)data.settings.modsEnabled=false;
   if(!['public','private'].includes(data.settings.defaultGroupVisibility))data.settings.defaultGroupVisibility='private';
   save();
@@ -4051,7 +4052,75 @@ if(window.treadSupabaseReady()){
     }catch(e){console.error('tread conversations load',e);notify('Ошибка загрузки чатов: '+e.message);}
     finally{loading=false;}
   }
+  const openingChats=new Map();
+  let presenceChannel=null, presenceChatId=null, typingTimer=null, typingStopTimer=null, remoteTyping=false;
+  function setRemotePresence(chat, state){
+    if(!chat)return;
+    chat._remotePresence=state;
+    if(currentChat===chat)paintRemotePresence(chat);
+  }
+  function paintRemotePresence(chat){
+    const el=document.getElementById('chatSub');if(!el||currentChat!==chat)return;
+    if(chat.type==='group'){el.textContent='Участники';return;}
+    if(chat._remotePresence==='typing'){
+      el.innerHTML='<span class="presence-typing">печатает…</span>';el.className='chat-title-sub presence';
+    }else if(chat._remotePresence==='online'){
+      el.innerHTML='<span class="presence-dot"></span><span class="presence-online">в сети</span>';el.className='chat-title-sub presence';
+    }else{
+      el.textContent='не в сети';el.className='chat-title-sub';
+    }
+  }
+  async function openPresence(chat){
+    const sb=client();if(!sb||!chat?._remoteConversationId)return;
+    if(presenceChannel){try{await sb.removeChannel(presenceChannel)}catch(e){}presenceChannel=null;}
+    presenceChatId=chat._remoteConversationId;
+    const channelPresence=sb.channel('tread-presence-'+chat._remoteConversationId,{config:{presence:{key:window.treadCurrentUser.id},broadcast:{self:false}}});
+    presenceChannel=channelPresence;
+    channelPresence.on('presence',{event:'sync'},()=>{
+      const state=channelPresence.presenceState();
+      const peers=Object.entries(state).filter(([key])=>key!==window.treadCurrentUser.id).flatMap(([,items])=>items||[]);
+      const peer=peers[0];setRemotePresence(chat,peer?.typing?'typing':peer?'online':'offline');
+    }).on('broadcast',{event:'typing'},({payload})=>{
+      if(payload?.user_id===window.treadCurrentUser.id)return;
+      if(payload?.typing){setRemotePresence(chat,'typing');clearTimeout(typingStopTimer);typingStopTimer=setTimeout(()=>setRemotePresence(chat,'online'),3500);}
+      else if(chat._remotePresence==='typing')setRemotePresence(chat,'online');
+    }).subscribe(async status=>{
+      if(status==='SUBSCRIBED'){
+        await channelPresence.track({user_id:window.treadCurrentUser.id,typing:false,online_at:new Date().toISOString()});
+      }
+    });
+  }
+  function sendTypingState(typing){
+    if(!presenceChannel)return;
+    presenceChannel.track({user_id:window.treadCurrentUser.id,typing:!!typing,online_at:new Date().toISOString()});
+    presenceChannel.send({type:'broadcast',event:'typing',payload:{user_id:window.treadCurrentUser.id,typing:!!typing}});
+  }
+  function bindTypingInput(){
+    const input=document.getElementById('msgInput');if(!input||input.dataset.treadTypingBound)return;
+    input.dataset.treadTypingBound='1';
+    input.addEventListener('input',()=>{
+      if(!currentChat?._remoteConversationId)return;
+      sendTypingState(true);clearTimeout(typingStopTimer);
+      typingStopTimer=setTimeout(()=>sendTypingState(false),1800);
+    });
+    input.addEventListener('blur',()=>sendTypingState(false));
+  }
+  bindTypingInput();
   window.treadStartDirectChat=async function(peerId){
+    const sb=client();if(!sb){notify('Сначала войди через Google');return;}
+    if(!peerId||peerId===window.treadCurrentUser.id)return;
+    if(openingChats.has(peerId)){await openingChats.get(peerId);return;}
+    const task=(async()=>{
+      const {data:id,error}=await sb.rpc('create_direct_conversation',{peer_user_id:peerId});
+      if(error){notify('Не удалось открыть чат: '+error.message);return;}
+      await loadConversations();
+      let chat=data.chats.find(x=>x._remoteConversationId===id);
+      if(!chat){const p=await sb.from('profiles').select('display_name,username').eq('id',peerId).maybeSingle();chat={id:'remote_'+id,_remoteConversationId:id,type:'direct',title:p.data?.display_name||p.data?.username||'Личный чат',peerUserId:peerId,messages:[],createdAt:Date.now(),unread:0};data.chats.push(chat);save();renderList();}
+      openChat(chat.id);
+    })();
+    openingChats.set(peerId,task);
+    try{await task;}finally{openingChats.delete(peerId);}
+  };
     const sb=client();if(!sb){notify('Сначала войди через Google');return;}
     if(!peerId||peerId===window.treadCurrentUser.id)return;
     const {data:id,error}=await sb.rpc('create_direct_conversation',{peer_user_id:peerId});
@@ -4062,7 +4131,12 @@ if(window.treadSupabaseReady()){
     openChat(chat.id);
   };
   const oldOpenChat=window.openChat;
-  window.openChat=function(id){oldOpenChat.apply(this,arguments);if(currentChat?._remoteConversationId)refreshMessages(currentChat);};
+  window.openChat=function(id){
+    oldOpenChat.apply(this,arguments);
+    bindTypingInput();
+    if(currentChat?._remoteConversationId){refreshMessages(currentChat);openPresence(currentChat);}
+    else if(presenceChannel){client()?.removeChannel(presenceChannel);presenceChannel=null;}
+  };
   const oldSend=window.sendMessage;
   window.sendMessage=async function(){
     const chat=currentChat,sb=client(),input=document.getElementById('msgInput');
@@ -4195,6 +4269,31 @@ if(window.treadSupabaseReady()){
   else start();
 })();
 </script>
+</script>
+
+<style id="tread-keyboard-chat-fix">
+#screen-chat{--tread-kb:0px}
+#screen-chat .input-area{bottom:var(--tread-kb)!important;padding-bottom:max(8px,env(safe-area-inset-bottom))}
+#screen-chat .messages{padding-bottom:calc(14px + var(--tread-kb))}
+#screen-chat.keyboard-open .input-area{transition:bottom .12s ease}
+.presence-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#35c979;margin-right:5px;box-shadow:0 0 0 3px rgba(53,201,121,.13)}
+</style>
+<script id="tread-keyboard-viewport-fix">
+(()=>{
+ const vv=window.visualViewport,screen=document.getElementById('screen-chat');
+ if(!vv||!screen)return;
+ const update=()=>{
+  const keyboard=Math.max(0,window.innerHeight-vv.height-vv.offsetTop);
+  screen.style.setProperty('--tread-kb',keyboard>80?keyboard+'px':'0px');
+  screen.classList.toggle('keyboard-open',keyboard>80);
+  if(keyboard>80)requestAnimationFrame(()=>{const m=document.getElementById('messages');if(m)m.scrollTop=m.scrollHeight;});
+ };
+ vv.addEventListener('resize',update);vv.addEventListener('scroll',update);
+ window.addEventListener('orientationchange',()=>setTimeout(update,250));
+ document.addEventListener('focusin',e=>{if(e.target?.id==='msgInput')setTimeout(update,80)});
+ document.addEventListener('focusout',e=>{if(e.target?.id==='msgInput')setTimeout(update,220)});
+ update();
+})();
 </script>
 </body>
 </html>
