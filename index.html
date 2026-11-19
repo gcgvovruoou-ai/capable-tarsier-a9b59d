@@ -4167,6 +4167,34 @@ if(window.treadSupabaseReady()){
   window.addEventListener('tread-auth-changed',()=>setTimeout(add,80));
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',add);else setTimeout(add,0);
 })();
+
+<script id="tread-advanced-signout-persistent">
+(()=>{
+  function ensureAdvancedSignout(){
+    const sub=document.querySelector('#myProfileContent .settings-subpage[data-settings-page="advanced"]');
+    if(!sub||sub.querySelector('.tread-advanced-signout'))return;
+    const wrap=document.createElement('div');
+    wrap.className='profile-section';
+    wrap.style.marginTop='14px';
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.className='setting-row tread-advanced-signout';
+    btn.style.cssText='width:100%;color:#e06464;background:transparent;border:0;text-align:left';
+    btn.innerHTML='<span class="ic">↪</span><span class="settings-nav-copy"><span class="lbl">Выйти из аккаунта</span><small>Завершить сеанс и вернуться к регистрации</small></span>';
+    btn.addEventListener('click',()=>window.treadSignOutToRegistration());
+    wrap.appendChild(btn);
+    sub.appendChild(wrap);
+  }
+  const start=()=>{
+    const root=document.getElementById('myProfileContent');
+    if(!root)return;
+    new MutationObserver(ensureAdvancedSignout).observe(root,{childList:true,subtree:true});
+    ensureAdvancedSignout();
+  };
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});
+  else start();
+})();
+</script>
 </script>
 </body>
 </html>
