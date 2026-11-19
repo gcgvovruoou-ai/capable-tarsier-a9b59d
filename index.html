@@ -1657,12 +1657,12 @@ function renderMsg(m){
   const avStyle = isMe && data.me.image ? `background-image:url(${data.me.image})` : `background:${hashColor(m.author)}`;
   const avContent = (isMe && data.me.image) ? '' : m.author[0].toUpperCase();
   // Эликсы отображаются как центральное событие чата, а не как обычное сообщение слева.
-  if (m.gift) return `<div class="msg elix-gift-row" id="msg-${m.id}" oncontextmenu="event.preventDefault();openMsgActions(${m.id})" data-id="${m.id}">
+  if (m.gift) return `<div class="msg elix-gift-row" id="msg-${m.id}" oncontextmenu="event.preventDefault();openMsgActions(${JSON.stringify(String(m.id))})" data-id="${m.id}">
     <div class="elix-gift-center" data-rarity="${esc(m.gift.rarity||'')}" ${m.gift.itemName ? `onclick="openReceivedGift(${m.id})"` : ''}><div class="elix-gift-sender">
 ${esc(m.author)} отправил${isMe?'':'а'} подарок</div><span class="elix-star">${m.gift.itemIcon||'✦'}</span><div class="elix-gift-label">${esc(m.gift.itemName||'Подарок tread.')}</div>${m.gift.itemNo?`<small class="gift-serial">${esc('#'+m.gift.itemNo)}</small>`:''}<strong>${m.gift.itemName?'Коллекционный подарок':formatElix(m.gift.amount)+' эликсов'}</strong><small>Для ${esc(m.gift.to||'этого чата')} · ${timeStr(m.createdAt)}</small></div>
   </div>`;
 
-  return `<div class="msg ${isMe?'mine':''}" id="msg-${m.id}" oncontextmenu="event.preventDefault();openMsgActions(${m.id})" data-swipe="chat" data-id="${m.id}">
+  return `<div class="msg ${isMe?'mine':''}" id="msg-${m.id}" oncontextmenu="event.preventDefault();openMsgActions(${JSON.stringify(String(m.id))})" data-swipe="chat" data-id="${m.id}">
     <div class="reply-indicator">↩</div>
     <div class="msg-av" style="${avStyle}" onclick="openUserProfile('${esc(m.author)}')">${avContent}</div>
     <div class="msg-body">
@@ -1737,8 +1737,7 @@ function reactionVisual(e){return String(e).startsWith('stk:')?(window.stk?windo
     if(g||e.touches.length!==1||e.target.closest('input,textarea,button'))return;
     const el=e.target.closest('[data-swipe]');if(!el)return;
     const t=e.touches[0];
-    g={el,kind:el.dataset.swipe,id:Number(el.dataset.id),x:t.clientX,y:t.clientY,active:false,moved:false,ready:false,long:false,ico:null,insideCode:!!e.target.closest('.tread-code pre')};
-    if(g.kind==='chat'&&!el.classList.contains('elix-gift-row'))g.timer=setTimeout(()=>{if(g&&!g.moved){g.long=true;haptic(15);openMsgActions(g.id)}},480);
+    g={el,kind:el.dataset.swipe,id:String(el.dataset.id),x:t.clientX,y:t.clientY,active:false,moved:false,ready:false,long:false,ico:null,insideCode:!!e.target.closest('.tread-code pre')};
   }
   function move(e){
     if(!g)return;
@@ -1774,6 +1773,37 @@ function reactionVisual(e){return String(e).startsWith('stk:')?(window.stk?windo
   document.addEventListener('touchend',end);
   document.addEventListener('touchcancel',()=>{if(g){clearTimeout(g.timer);reset(true);g=null}});
 })();
+
+// Независимое долгое нажатие для меню сообщений. Не зависит от жеста свайпа.
+(function(){
+ let timer=null, origin=null, fired=false;
+ const clear=()=>{if(timer){clearTimeout(timer);timer=null;}origin=null;};
+ document.addEventListener('pointerdown',e=>{
+  if(e.pointerType!=='touch'&&e.pointerType!=='pen')return;
+  const el=e.target.closest('#messages .msg[data-id]');
+  if(!el||e.target.closest('button,a,input,textarea, audio,video'))return;
+  clear();fired=false;origin={x:e.clientX,y:e.clientY,el};
+  timer=setTimeout(()=>{
+   if(!origin)return;
+   fired=true;const id=String(origin.el.dataset.id||'');
+   if(id){haptic(15);window.openMsgActions(id);}
+   clear();
+  },520);
+ },{passive:true});
+ document.addEventListener('pointermove',e=>{
+  if(!origin)return;
+  if(Math.hypot(e.clientX-origin.x,e.clientY-origin.y)>12)clear();
+ },{passive:true});
+ document.addEventListener('pointerup',clear,{passive:true});
+ document.addEventListener('pointercancel',clear,{passive:true});
+ document.addEventListener('contextmenu',e=>{
+  const el=e.target.closest('#messages .msg[data-id]');
+  if(!el)return;
+  e.preventDefault();e.stopPropagation();
+  clear();window.openMsgActions(String(el.dataset.id||''));
+ },true);
+})();
+window.openMsgActions=openMsgActions;
 
 // ДЕЙСТВИЯ С СООБЩЕНИЕМ
 function openMsgActions(id){
@@ -1815,7 +1845,7 @@ function togglePin(id){const parent=findTopParent(currentChat,id);if(!parent)ret
 function showReactPicker(id){sheet(`<div class="grip"></div><h2>Реакция</h2><div class="react-picker">${REACTS.map(e=>`<button class="react-opt" onclick="closeSheet();toggleReact(${id},'${e}')">${e}</button>`).join('')}</div>`)}
 function toggleReact(id,e,withBurst=false){const m=findMsgInChat(currentChat,id);if(!m)return;toggleReaction(m,e);save();haptic();renderMessages(currentChat.lastReadTs);requestAnimationFrame(()=>{const host=document.querySelector('#messages #msg-'+id+' .msg-reactions');if(!host)return;const chip=[...host.querySelectorAll('.reaction[data-reaction-key]')].find(x=>x.dataset.reactionKey===e);if(chip){chip.classList.remove('just-added');void chip.offsetWidth;chip.classList.add('just-added');if(window.emojiBurst)window.emojiBurst(chip,e);const emoji=chip.firstChild;if(emoji&&emoji.nodeType===Node.TEXT_NODE){const span=document.createElement('span');span.className='emoji-pop';span.textContent=emoji.textContent.trim().split(/\\s+/)[0];emoji.textContent=emoji.textContent.replace(span.textContent,'');chip.prepend(span)}}})}
 function copyMsg(id){const m=findMsgInChat(currentChat,id);if(!m)return;const text=m.text||(m.image?.type==='url'?m.image.src:'');if(text)navigator.clipboard?.writeText(text);haptic();toast('Скопировано')}
-function deleteMsg(id){if(!confirm('Удалить?'))return;const i=currentChat.messages.findIndex(m=>m.id===id);if(i>=0)currentChat.messages.splice(i,1);else for(const m of currentChat.messages)if(m.replies){const j=m.replies.findIndex(r=>r.id===id);if(j>=0){m.replies.splice(j,1);break}}save();renderMessages(currentChat.lastReadTs);renderPinBanner();haptic();toast('Удалено')}
+function deleteMsg(id){if(!confirm('Удалить?'))return;const i=currentChat.messages.findIndex(m=>String(m.id)===String(id));if(i>=0)currentChat.messages.splice(i,1);else for(const m of currentChat.messages)if(m.replies){const j=m.replies.findIndex(r=>String(r.id)===String(id));if(j>=0){m.replies.splice(j,1);break}}save();renderMessages(currentChat.lastReadTs);renderPinBanner();haptic();toast('Удалено')}
 
 function sendMessage(){
   const inp=document.getElementById('msgInput');let text=inp.value.trim();if(text&&!text.startsWith('```')&&looksLikeCode(text)){const lang=detectCodeLanguage(text);text='```'+lang+'\n'+text+'\n```'}
