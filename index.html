@@ -3856,7 +3856,7 @@ window.treadResetGuestIdentity = function(){
 window.treadGoogleLogin = async function(){
   if(!window.treadSupabaseReady()){window.treadSetAuthStatus('Не удалось подключить сервер. Проверь интернет и настройки Supabase.');return;}
   window.treadSetAuthStatus('Открываем безопасный вход Google…');
-  const redirectTo=window.location.origin + window.location.pathname;
+  const redirectTo='https://capable-tarsier-a9b59d.netlify.app/';
   const {error}=await window.treadSupabase.auth.signInWithOAuth({provider:'google',options:{redirectTo}});
   if(error) window.treadSetAuthStatus('Ошибка Google-входа: '+error.message);
 };
