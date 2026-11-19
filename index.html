@@ -4152,9 +4152,10 @@ if(window.treadSupabaseReady()){
  }
  const oldDoDelete=window.doDelete;
  window.confirmDelete=function(id,type){
-  const idArg=Number.isFinite(Number(id))?String(Number(id)):'null',kind=type==='channel'?'канал':'чат';
-  const description=type==='chat'?'Переписка и сообщения будут удалены у тебя и у собеседника. Это действие нельзя отменить.':'Восстановить нельзя.';
-  sheet('<div class="grip"></div><h2>Удалить '+kind+'?</h2><p style="text-align:center;color:var(--muted);margin-bottom:20px;font-size:13.5px">'+description+'</p><div class="actions"><button class="btn sec" onclick="closeSheet()">Отмена</button><button class="btn pri" style="background:var(--danger)" onclick="doDelete('+idArg+',\''+type+'\')">Удалить</button></div>');
+  const idArg=JSON.stringify(String(id)),kind=type==='channel'?'канал':'чат';
+  const chat=type==='chat'?data.chats.find(c=>String(c.id)===String(id)):null;
+  const description=type==='chat'?(chat?._remoteConversationId?'Переписка и сообщения будут удалены у тебя и у собеседника. Это действие нельзя отменить.':'Этот старый чат и все его сообщения будут удалены с этого устройства. Это действие нельзя отменить.'):'Восстановить нельзя.';
+  sheet('<div class="grip"></div><h2>Удалить '+kind+'?</h2><p style="text-align:center;color:var(--muted);margin-bottom:20px;font-size:13.5px">'+description+'</p><div class="actions"><button class="btn sec" onclick="closeSheet()">Отмена</button><button class="btn pri" style="background:var(--danger)" onclick="doDelete('+idArg+',\\''+type+'\\')">Удалить</button></div>');
  };
  window.doDelete=async function(id,type){
   if(type!=='chat')return oldDoDelete.apply(this,arguments);
@@ -4179,6 +4180,19 @@ if(window.treadSupabaseReady()){
     }
     save();closeSheet();renderList();haptic(20);notify('Переписка удалена у обоих участников');return;
    }catch(e){console.error('tread delete conversation for all',e);notify('Не удалось удалить переписку: '+(e?.message||String(e)));return;}
+  }
+  // Старые чаты до синхронизации существуют только в локальном хранилище.
+  // Удаляем весь объект чата вместе со встроенной историей сообщений.
+  const legacyChat=data.chats.find(c=>String(c.id)===String(id));
+  if(legacyChat){
+   data.chats=data.chats.filter(c=>String(c.id)!==String(id));
+   if(currentChat===legacyChat){
+    currentChat=null;
+    if(presenceChannel){try{await client()?.removeChannel(presenceChannel)}catch(e){}presenceChannel=null;}
+    document.getElementById('screen-chat')?.classList.remove('on');
+    document.getElementById('screen-list')?.classList.add('on');
+   }
+   save();closeSheet();renderList();haptic(20);notify('Старый чат и все его сообщения удалены с этого устройства');return;
   }
   return oldDoDelete.apply(this,arguments);
  };
