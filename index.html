@@ -2257,7 +2257,7 @@ function openSettingsPage(page){
  if(page==='energy') html=`<div class="profile-section">${toggle('premiumAnimations','Плавные анимации','✧')}${toggle('reduceMotion','Уменьшить движение','ϟ',false)}</div>`;
  if(page==='devices') html=`<div class="profile-section">${row('▱','Это устройство',`<span class="val">Текущий сеанс</span>`)}<div class="privacy-note">Список других устройств появится при подключении синхронизации.</div></div>`;
  if(page==='language') html=`<div class="profile-section">${row('文','Русский',`<span class="val">✓</span>`)}${row('文','English',`<span class="val" onclick="selectLanguage('en')">Выбрать</span>`)}</div>`;
- if(page==='advanced') html=`<div class="profile-section">${toggle('modsEnabled','Плеер мод','♫',false)}${toggle('experimental','Экспериментальные функции','⚗',false)}</div>`;
+ if(page==='advanced') html=`<div class="profile-section">${toggle('modsEnabled','Плеер мод','♫',false)}${toggle('experimental','Экспериментальные функции','⚗',false)}</div><div class="profile-section" style="margin-top:14px"><button type="button" class="setting-row" style="width:100%;color:#e06464;background:transparent;border:0;text-align:left" onclick="treadSignOutToRegistration()"><span class="ic">↪</span><span class="settings-nav-copy"><span class="lbl">Выйти из аккаунта</span><small>Завершить сеанс и вернуться к регистрации</small></span></button></div>`;
  if(page==='premium') html=`<div class="settings-premium"><div class="premium-mark">✦</div><div class="premium-copy"><b>Все функции открыты</b><span>Premium-возможности tread. пока бесплатны</span></div></div><div class="profile-section">${toggle('premiumAnimations','Плавные эффекты','✧')}${toggle('largeMedia','Улучшенный просмотр медиа','▧')}${toggle('modsEnabled','Плеер мод','♫',false)}</div>`;
  const profile=document.getElementById('screen-my-profile');
  profile?.classList.add('settings-page-open');
@@ -3933,10 +3933,22 @@ window.treadOnSignedIn = async function(user){
 window.treadSignOut = async function(){
   if(!window.treadSupabaseReady())return;
   const {error}=await window.treadSupabase.auth.signOut();
-  if(error){console.error(error);return;}
+  if(error){console.error(error);throw error;}
   window.treadCurrentUser=null;
   window.treadResetGuestIdentity();
   window.dispatchEvent(new CustomEvent('tread-auth-changed',{detail:null}));
+};
+window.treadSignOutToRegistration = async function(){
+  const button=document.querySelector('[data-settings-page="advanced"] button[onclick="treadSignOutToRegistration()"]');
+  if(!window.treadCurrentUser){const overlay=document.getElementById('treadWelcome');if(overlay){overlay.classList.add('show');window.treadWelcomePhone();}return;}
+  if(!confirm('Выйти из аккаунта tread?'))return;
+  if(button)button.disabled=true;
+  try{
+    await window.treadSignOut();
+    const overlay=document.getElementById('treadWelcome');
+    if(overlay){overlay.classList.add('show');window.treadWelcomePhone();}
+    try{localStorage.removeItem('tread_welcome_seen')}catch(e){}
+  }catch(e){if(button)button.disabled=false;window.treadSetAuthStatus('Не удалось выйти: '+(e?.message||e));}
 };
 window.treadSearchPeople = async function(){
   searchTab='people';
