@@ -4136,11 +4136,27 @@ if(window.treadSupabaseReady()){
   if(type!=='chat')return oldDoDelete.apply(this,arguments);
   const chat=data.chats.find(c=>String(c.id)===String(id));
   if(chat?._remoteConversationId){
-   const sb=client();if(!sb){notify('Войди в аккаунт, чтобы удалить синхронизированный чат.');return;}
-   const {data:deleted,error}=await sb.from('conversation_members').delete().eq('conversation_id',chat._remoteConversationId).eq('user_id',window.treadCurrentUser.id).select('conversation_id');
-   if(error){notify('Не удалось удалить чат: '+error.message);return;}if(!deleted?.length){notify('Чат не удалён: нет доступа к нему.');return;}
-   data.chats=data.chats.filter(c=>c!==chat);if(currentChat===chat){currentChat=null;document.getElementById('screen-chat')?.classList.remove('on');document.getElementById('screen-list')?.classList.add('on');}
-   save();closeSheet();renderList();haptic(20);notify('Чат удалён из твоего списка');return;
+   const sb=client(),uid=window.treadCurrentUser?.id;
+   if(!sb||!uid){notify('Войди в аккаунт, чтобы удалить синхронизированный чат.');return;}
+   try{
+    // Avoid DELETE ... RETURNING: returned rows are also subject to SELECT RLS.
+    const {error}=await sb.from('conversation_members').delete()
+     .eq('conversation_id',chat._remoteConversationId).eq('user_id',uid);
+    if(error)throw error;
+    // Verify separately that this user's membership is actually gone.
+    const {data:remaining,error:checkError}=await sb.from('conversation_members')
+     .select('conversation_id').eq('conversation_id',chat._remoteConversationId).eq('user_id',uid).maybeSingle();
+    if(checkError)throw checkError;
+    if(remaining){notify('Чат не удалён: сервер не удалил ваше участие. Проверьте права доступа.');return;}
+    data.chats=data.chats.filter(c=>c!==chat);
+    if(currentChat===chat){
+     currentChat=null;
+     if(presenceChannel){try{await sb.removeChannel(presenceChannel)}catch(e){}presenceChannel=null;}
+     document.getElementById('screen-chat')?.classList.remove('on');
+     document.getElementById('screen-list')?.classList.add('on');
+    }
+    save();closeSheet();renderList();haptic(20);notify('Чат удалён из твоего списка');return;
+   }catch(e){console.error('tread delete conversation',e);notify('Не удалось удалить чат: '+(e?.message||String(e)));return;}
   }
   return oldDoDelete.apply(this,arguments);
  };
