@@ -4442,24 +4442,48 @@ if(window.treadSupabaseReady()){
 
 
 <style id="tread-keyboard-chat-fix">
-#screen-chat{--tread-kb:0px}
-#screen-chat .input-area{bottom:var(--tread-kb)!important;padding-bottom:max(8px,env(safe-area-inset-bottom))}
-#screen-chat .messages{padding-bottom:calc(14px + var(--tread-kb))}
-#screen-chat.keyboard-open .input-area{transition:bottom .12s ease}
+#screen-chat{--tread-vv-top:0px;--tread-vv-height:100%;--tread-kb:0px}
+#screen-chat.keyboard-open{top:var(--tread-vv-top)!important;bottom:auto!important;height:var(--tread-vv-height)!important}
+#screen-chat .input-area{bottom:0!important;padding-bottom:max(8px,env(safe-area-inset-bottom))}
+#screen-chat .messages{padding-bottom:14px}
+#screen-chat.keyboard-open .input-area{transition:none}
+#screen-chat.keyboard-open .messages{scroll-padding-bottom:14px}
 .presence-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#35c979;margin-right:5px;box-shadow:0 0 0 3px rgba(53,201,121,.13)}
 </style>
 <script id="tread-keyboard-viewport-fix">
 (()=>{
  const vv=window.visualViewport,screen=document.getElementById('screen-chat');
  if(!vv||!screen)return;
+ let fullHeight=Math.max(window.innerHeight,document.documentElement.clientHeight,vv.height);
+ let lastOrientation=screen._treadOrientation||window.orientation||0;
+ let raf=0;
  const update=()=>{
-  const keyboard=Math.max(0,window.innerHeight-vv.height-vv.offsetTop);
-  screen.style.setProperty('--tread-kb',keyboard>80?keyboard+'px':'0px');
-  screen.classList.toggle('keyboard-open',keyboard>80);
-  if(keyboard>80)requestAnimationFrame(()=>{const m=document.getElementById('messages');if(m)m.scrollTop=m.scrollHeight;});
+  cancelAnimationFrame(raf);
+  raf=requestAnimationFrame(()=>{
+   const orientation=window.orientation||0;
+   if(orientation!==lastOrientation){
+    lastOrientation=orientation;
+    fullHeight=Math.max(window.innerHeight,document.documentElement.clientHeight,vv.height);
+   }
+   const visibleHeight=vv.height;
+   const keyboard=Math.max(0,fullHeight-visibleHeight-vv.offsetTop);
+   const open=keyboard>100;
+   screen.classList.toggle('keyboard-open',open);
+   if(open){
+    screen.style.setProperty('--tread-vv-top',vv.offsetTop+'px');
+    screen.style.setProperty('--tread-vv-height',visibleHeight+'px');
+    screen.style.setProperty('--tread-kb',keyboard+'px');
+   }else{
+    screen.style.setProperty('--tread-vv-top','0px');
+    screen.style.setProperty('--tread-vv-height','100%');
+    screen.style.setProperty('--tread-kb','0px');
+   }
+  });
  };
- vv.addEventListener('resize',update);vv.addEventListener('scroll',update);
- window.addEventListener('orientationchange',()=>setTimeout(update,250));
+ vv.addEventListener('resize',update);
+ vv.addEventListener('scroll',update);
+ window.addEventListener('resize',update);
+ window.addEventListener('orientationchange',()=>setTimeout(update,300));
  document.addEventListener('focusin',e=>{if(e.target?.id==='msgInput')setTimeout(update,80)});
  document.addEventListener('focusout',e=>{if(e.target?.id==='msgInput')setTimeout(update,220)});
  update();
