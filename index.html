@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap">
 <style>
+
 *{margin:0;padding:0;box-sizing:border-box;font-family:var(--app-font,-apple-system),BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
 button,.iconbtn,.attach-btn,.reaction,.post-card,.mod-card,.sitem{transition-property:background-color,color,border-color,opacity,transform,box-shadow;transition-duration:.22s;transition-timing-function:cubic-bezier(.2,.7,.2,1)}
 :root{--bg:#0e0f12;--card:#181b20;--card-hi:#1f232a;--line:#2a2e36;--text:#e3e5e9;--muted:#767b85;--accent:#d97757;--danger:#c5544f;--blue:#5c8dc9;--purple:#8b6fb0}
@@ -567,8 +568,8 @@ html[data-out=solid] #messages .msg.mine .msg-receipt.read{color:#fff;filter:dro
 @media(hover:hover){.feed-channel-link:hover,.feed-comment-link:hover{color:var(--accent)}}
 
 .shared-post-card{margin-top:8px;padding:10px;border:1px solid var(--line);border-radius:13px;background:color-mix(in srgb,var(--card) 88%,var(--accent) 12%);cursor:pointer;max-width:330px;display:flex;flex-direction:column;gap:6px}.shared-post-source{font-size:12px;color:var(--accent);font-weight:700;display:flex;justify-content:space-between}.shared-post-card>b{font-size:14px}.shared-post-card img{width:100%;max-height:150px;object-fit:cover;border-radius:9px}.shared-post-excerpt{font-size:12px;color:var(--text);line-height:1.4;white-space:pre-wrap}.shared-post-card small{font-size:11px;color:var(--muted)}
-</style>
-<style>
+
+
 /* tread. visual refinement — keeps the existing screens and layout */
 :root{scroll-behavior:smooth}
 button,.setting-row,.chat-item,.list-row,.gift-collection-btn,.profile-sticker-btn{ -webkit-tap-highlight-color:transparent }
@@ -593,8 +594,9 @@ input,textarea,select{border-radius:12px!important}
 .appearance-choice button,.appearance-chip{border-radius:12px}
 .privacy-note{line-height:1.55}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
-</style>
-<style id="tread-unified">
+
+/* consolidated from #tread-unified */
+
 /* tread. — единый визуальный слой: токены, формы, поверхности, движение. Структура и логика не тронуты. */
 :root{--r-sm:12px;--r-md:16px;--r-lg:22px;--ease:cubic-bezier(.22,1,.36,1);--spring:cubic-bezier(.34,1.45,.64,1);
 --soft:color-mix(in srgb,var(--accent) 14%,transparent);--edge:color-mix(in srgb,var(--accent) 36%,var(--line));
@@ -693,8 +695,9 @@ body{-webkit-font-smoothing:antialiased}
 .vk-ic.sm{color:color-mix(in srgb,var(--text) 50%,transparent)}.vk-ic.sm.on{color:var(--accent)}
 .vk-play{background:var(--text);color:var(--bg);transition:transform .3s var(--spring)}
 .vk-cover{transition:transform .5s var(--spring)}
-</style>
-<style id="tread-features">
+
+/* consolidated from #tread-features */
+
 /* ---- логотип, точка ---- */
 .logo{letter-spacing:-1.3px}
 .lg-l{display:inline-block;color:transparent;-webkit-text-fill-color:transparent;background-image:linear-gradient(100deg,var(--text) 0 42%,color-mix(in srgb,var(--accent) 78%,#fff) 50%,var(--text) 58% 100%);background-size:300% 100%;-webkit-background-clip:text;background-clip:text;animation:lgIn .7s var(--spring) backwards,lgSheen 6s ease-in-out infinite;animation-delay:calc(var(--i)*70ms),calc(var(--i)*160ms + 1.2s)}
@@ -832,7 +835,9 @@ body{-webkit-font-smoothing:antialiased}
 @media(hover:hover){.elix-shop-tabs button:hover,.elix-pop-actions button:hover{filter:brightness(1.08)}}
 .image-viewer.av img{border-radius:50%;width:min(80vw,380px);height:min(80vw,380px);object-fit:cover;box-shadow:0 20px 60px rgba(0,0,0,.6)}
 .profile-av{transition:transform .3s var(--spring)}.profile-av:active{transform:scale(.94)}
-</style><style id="tread-fixes">
+
+/* consolidated from #tread-fixes */
+
 .settings-subheader .chat-title-block{text-align:left}.settings-subheader>div:last-child{display:none}
 .vk-x{display:none!important}
 .grip{position:relative;touch-action:none;cursor:grab}.grip::before{content:"";position:absolute;inset:-18px -70px}
@@ -859,7 +864,9 @@ body{-webkit-font-smoothing:antialiased}
 @keyframes glSway{0%,100%{transform:rotate(-3deg) translateY(1px)}50%{transform:rotate(3deg) translateY(-3px)}}
 @keyframes glGlow{0%,100%{opacity:.15;transform:scale(.92)}50%{opacity:.42;transform:scale(1.08)}}
 @keyframes glFlap{from{transform:scaleX(1)}to{transform:scaleX(.55)}}
-</style><style id="tread-pop">
+
+/* consolidated from #tread-pop */
+
 .mpop-root{position:fixed;inset:0;z-index:400}
 .mpop-bg{position:absolute;inset:0;background:rgba(0,0,0,.3);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);animation:fadeIn .2s ease}
 .mpop-root.out .mpop-bg{opacity:0;transition:opacity .18s}.mpop-root.out .mpop{opacity:0;transform:scale(.92);transition:opacity .16s,transform .16s}
@@ -921,9 +928,9 @@ body{-webkit-font-smoothing:antialiased}
 .gift-reveal.rare .gift-reveal-card,.gift-reveal.epic .gift-reveal-card,.gift-reveal.legendary .gift-reveal-card{box-shadow:0 24px 90px #0009,0 0 45px currentColor}
 @keyframes revealFade{from{opacity:0}to{opacity:1}}@keyframes revealCard{from{opacity:0;transform:translateY(35px) scale(.72) rotate(-4deg)}to{opacity:1;transform:none}}@keyframes revealSpin{to{transform:rotate(360deg)}}@keyframes revealFloat{0%,100%{transform:translateY(3px) scale(1)}50%{transform:translateY(-8px) scale(1.04)}}
 @media(prefers-reduced-motion:reduce){.elix-chip.support-arrive,.elix-gift-center.gift-event-pop,.gift-reveal-card,.gift-reveal-rays,.gift-reveal-card:before,.gift-reveal-art{animation:none!important}}
-</style>
 
-<style id="tread-original-refresh">
+/* consolidated from #tread-original-refresh */
+
 :root{--r-sm:11px;--r-md:17px;--r-lg:23px;--ease:cubic-bezier(.22,.75,.18,1);--spring:cubic-bezier(.2,.85,.25,1);--soft:color-mix(in srgb,var(--accent) 13%,transparent);--edge:color-mix(in srgb,var(--accent) 34%,var(--line));--sh1:0 5px 18px rgba(0,0,0,.16);--sh2:0 12px 34px rgba(0,0,0,.22);--glass:color-mix(in srgb,var(--card) 86%,transparent)}
 html,body{background:var(--bg)}.app{isolation:isolate}
 #screen-list .tabs{display:none!important}
@@ -961,10 +968,13 @@ html,body{background:var(--bg)}.app{isolation:isolate}
 @media(hover:hover){.bottom-nav-item:hover{background:color-mix(in srgb,var(--accent) 8%,transparent)}}
 @media(max-width:380px){.bottom-nav{left:9px;right:9px;height:64px}.bottom-nav-icon{font-size:18px}.chat-item{padding:11px 9px;gap:10px}}
 @media(prefers-reduced-motion:reduce){.bottom-nav,.bottom-nav-item,.chat-item,.chat-item::before{transition:none!important}}
+
 </style>
 
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Nunito:wght@400;600;700;800&family=Montserrat:wght@400;500;600;700;800&family=Rubik:wght@400;500;600;700;800&family=Roboto:wght@400;500;700&family=Comfortaa:wght@400;600;700&family=Unbounded:wght@400;500;600;700&family=Russo+One&family=Playfair+Display:wght@400;500;600;700;800&family=PT+Serif:wght@400;700&family=JetBrains+Mono:wght@400;500;600;700;800&family=Pixelify+Sans:wght@400;500;600;700&family=Press+Start+2P&family=VT323&family=Caveat:wght@400;600;700&family=Marck+Script&family=Lobster&display=swap">
-<style id="tread-comment-reaction-theme-fix">
+<style>
+/* consolidated from #tread-comment-reaction-theme-fix */
+
 /* Реакции и их счётчики в комментариях следуют цвету текста выбранной темы */
 #postView .cm-r .reaction,
 #postView .cm-r .reaction-count,
@@ -975,13 +985,13 @@ html,body{background:var(--bg)}.app{isolation:isolate}
   color: var(--text) !important;
 }
 #postView .cm-r .reaction-count { font-variant-numeric: tabular-nums; }
-</style>
 
-<style id="tread-forward-and-reaction-polish">
+/* consolidated from #tread-forward-and-reaction-polish */
+
 .ff-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.ff-forward-icon{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;background:var(--soft);color:var(--accent);font-size:22px}.ff-preview{padding:12px 14px;border:1px solid var(--line);border-radius:16px;background:var(--soft);margin-bottom:10px;color:var(--text);font-size:13px}.ff-preview b{display:block;color:var(--accent);margin-bottom:5px}.ff-list{max-height:min(44vh,420px);overflow:auto;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.ff-chat{border-radius:12px!important;padding:12px 10px!important}.ff-chat.selected{background:var(--soft)!important}.ff-check{width:25px;height:25px;border:1.5px solid var(--line);border-radius:50%;display:grid;place-items:center;color:var(--accent);font-weight:800}.ff-chat.selected .ff-check{background:var(--accent);border-color:var(--accent);color:white}.ff-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:12px;color:var(--muted);font-size:13px}.ff-footer .btn:disabled{opacity:.42;cursor:not-allowed}.mp-sc{display:flex;align-items:center;gap:6px;overflow-x:auto;max-width:min(88vw,560px);padding:5px 2px;scrollbar-width:thin}.mp-e{flex:none}.mp-row.danger:last-child{color:var(--danger);font-weight:650}
-</style>
 
-<style id="tread-swipe-reaction-grid">
+/* consolidated from #tread-swipe-reaction-grid */
+
 @keyframes mpGridReveal{from{opacity:0;transform:translateY(7px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
 .mpop-bar,.mp-sc{transition:width .22s var(--spring),max-height .24s var(--spring),padding .22s var(--spring),gap .22s var(--spring)}
 .mpop-root.mpop-swipe-grid .mpop{width:min(88vw,320px)!important;border-radius:22px;}
@@ -995,9 +1005,9 @@ html,body{background:var(--bg)}.app{isolation:isolate}
 .mpop-root.mpop-swipe-grid .mp-e:active{background:var(--soft);transform:scale(.96)}
 /* В компактной полоске тоже не запускаем десятки отдельных анимаций. */
 .mpop-root .mp-e{animation:none!important;}
-</style>
 
-<style id="tread-command-ui">
+/* consolidated from #tread-command-ui */
+
 #chatInputArea{position:relative}
 .command-suggestions{display:none;position:absolute;z-index:520;left:12px;right:12px;bottom:calc(100% - 4px);padding:7px;background:color-mix(in srgb,var(--card) 94%,transparent);border:1px solid color-mix(in srgb,var(--accent) 25%,var(--line));border-radius:17px;box-shadow:0 12px 34px #0003;backdrop-filter:blur(16px);transform-origin:bottom center}
 .command-suggestions.open{display:grid;gap:3px;animation:cmdRise .18s cubic-bezier(.2,.8,.2,1)}
@@ -1030,9 +1040,9 @@ html,body{background:var(--bg)}.app{isolation:isolate}
 #sheetBg.mini-app-open .sheet.mini-app-modal .grip{display:none}
 #sheetBg.mini-app-open .sheet.mini-app-modal .mini-app-frame{min-width:0}
 @media(max-width:420px){#sheetBg.mini-app-open{padding:14px}#sheetBg.mini-app-open .sheet.mini-app-modal{width:100%;max-height:84vh;border-radius:22px}}
-</style>
 
-<style id="gift-grid-mobile-fix">
+/* consolidated from #gift-grid-mobile-fix */
+
 /* Подарки: три компактные карточки в каждом горизонтальном ряду — магазин и коллекция */
 #sheet .tgg-grid{
   display:grid;
@@ -1063,9 +1073,9 @@ html,body{background:var(--bg)}.app{isolation:isolate}
   #sheet .tgg-name{font-size:9.5px}
   #sheet .tgg-price{font-size:9px}
 }
-</style>
 
-<style id="tread-messaging-visual-polish">
+/* consolidated from #tread-messaging-visual-polish */
+
 /* Messaging actions: softer surfaces, clearer hierarchy, touch-first feedback */
 .ff-head{padding:2px 2px 10px}.ff-forward-icon{width:48px;height:48px;border-radius:16px;background:linear-gradient(145deg,color-mix(in srgb,var(--accent) 20%,var(--card)),var(--soft));box-shadow:inset 0 1px 0 #ffffff22,0 5px 18px color-mix(in srgb,var(--accent) 13%,transparent);font-size:24px}.ff-preview{position:relative;overflow:hidden;border-radius:17px;padding:14px 15px 14px 17px;background:linear-gradient(120deg,color-mix(in srgb,var(--accent) 10%,var(--soft)),var(--soft));border-color:color-mix(in srgb,var(--accent) 20%,var(--line));box-shadow:inset 0 1px 0 #ffffff12}.ff-preview:before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:3px;border-radius:0 5px 5px 0;background:var(--accent)}.ff-preview b{font-size:11px;letter-spacing:.04em;text-transform:uppercase}.ff-list{border:1px solid var(--line);border-radius:17px;padding:5px;background:color-mix(in srgb,var(--card) 88%,var(--soft));max-height:min(46vh,440px)}.ff-chat{display:flex!important;align-items:center;gap:11px!important;padding:12px!important;border-radius:13px!important;min-height:64px;border:1px solid transparent!important;transition:background .18s,border-color .18s,transform .18s}.ff-chat:active{transform:scale(.985)}.ff-chat .si{width:39px;height:39px;flex:none;display:grid;place-items:center;border-radius:13px;background:var(--soft);font-size:17px}.ff-chat.selected{background:color-mix(in srgb,var(--accent) 10%,var(--card))!important;border-color:color-mix(in srgb,var(--accent) 25%,var(--line))!important}.ff-chat b{font-size:14px;font-weight:650}.ff-chat small{font-size:11px;margin-top:3px}.ff-check{width:24px;height:24px;flex:none;transition:transform .18s,background .18s}.ff-chat.selected .ff-check{transform:scale(1.06)}.ff-footer{position:sticky;bottom:-1px;margin:0 -2px;padding:13px 2px 2px;background:linear-gradient(180deg,transparent,var(--card) 24%);font-size:12px}.ff-footer .btn{min-height:44px;padding:0 20px;border-radius:14px;font-weight:700;box-shadow:0 5px 15px color-mix(in srgb,var(--accent) 18%,transparent)}
 .msg-select-toolbar{margin:10px 4px 4px;border-radius:17px;padding:9px;background:color-mix(in srgb,var(--card) 94%,var(--accent));border-color:color-mix(in srgb,var(--accent) 22%,var(--line));box-shadow:0 8px 26px #0002;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}.msg-select-toolbar b{font-size:13px;padding-left:5px}.msg-select-toolbar button{min-height:40px;padding:0 13px;border-radius:12px;font-size:12px;font-weight:650}.msg-select-toolbar .primary{box-shadow:0 4px 12px color-mix(in srgb,var(--accent) 24%,transparent)}.msg-select-mode .msg.selected{background:color-mix(in srgb,var(--accent) 7%,transparent);border-radius:14px}.msg-pick{width:23px;height:23px;background:var(--card);box-shadow:0 2px 8px #0002;transition:transform .18s,background .18s}.msg.selected .msg-pick{transform:translateY(-50%) scale(1.08)}
@@ -1073,6 +1083,7 @@ html,body{background:var(--bg)}.app{isolation:isolate}
 #chatReplyBanner{border:1px solid color-mix(in srgb,var(--accent) 25%,var(--line));border-radius:14px;background:linear-gradient(100deg,color-mix(in srgb,var(--accent) 11%,var(--card)),var(--card));box-shadow:0 4px 14px #0000000a;overflow:hidden}#chatReplyBanner:before{border-radius:5px;background:var(--accent)}#chatReplyBanner #chatRbAuthor{font-size:11px;font-weight:750;letter-spacing:.01em;color:var(--accent)}#chatReplyBanner #chatRbText{font-size:12px;line-height:1.4;color:var(--muted)}
 .sheet:has(.ff-list) h2{font-size:19px;letter-spacing:-.035em;margin:2px 0 8px}.sheet:has(.ff-list) .privacy-note{font-size:12px;line-height:1.45;margin-bottom:13px}.sheet:has(.ff-list) .grip{width:38px;height:4px;border-radius:8px;background:var(--muted);opacity:.35;margin:0 auto 17px}
 @media(prefers-reduced-motion:reduce){.ff-chat,.ff-check,.msg-pick,.msg-audio-tools button{transition:none!important}}
+
 </style>
 
 
@@ -3274,13 +3285,15 @@ let raf=0;new MutationObserver(()=>{cancelAnimationFrame(raf);raf=requestAnimati
 }
 
 
-<style id="tread-event-visuals">
+<style>
+/* consolidated from #tread-event-visuals */
+
 .gift-event-pop{animation:giftEventPop .62s cubic-bezier(.18,.85,.25,1) both!important}
 @keyframes giftEventPop{0%{transform:scale(.88);filter:brightness(1)}48%{transform:scale(1.045);filter:brightness(1.22)}100%{transform:scale(1);filter:brightness(1)}}
 @media(prefers-reduced-motion:reduce){.gift-event-pop{animation:none!important}}
-</style>
 
-<style id="tread-chat-bubbles-fix">
+/* consolidated from #tread-chat-bubbles-fix */
+
 /* Сообщение — отдельное компактное облако, а не заливка всей строки */
 #messages .msg:not(.elix-gift-row){
   width:100%; max-width:100%; box-sizing:border-box; align-items:flex-start;
@@ -3333,6 +3346,7 @@ html[data-out=solid] #messages .msg.mine .reply-ref .ref-author {
 html[data-out=solid] #messages .msg.mine .reply-ref .ref-text {
   color: rgba(255, 255, 255, 0.88);
 }
+
 </style>
 
 <script id="tread-discussed-additions">
@@ -3421,15 +3435,18 @@ html[data-motion="off"] img.tread-img-loading,html[data-motion="calm"] img.tread
 </script>
 
 
-<style id="tread-emoji-reaction-fx">
+<style>
+/* consolidated from #tread-emoji-reaction-fx */
+
 .emoji-reaction-burst{position:fixed;left:0;top:0;z-index:99999;pointer-events:none;width:0;height:0;transform:translate(-50%,-50%)}
 .emoji-reaction-burst b{position:absolute;left:0;top:0;font-size:31px;line-height:1;filter:drop-shadow(0 3px 7px #0003);animation:emojiCore .62s cubic-bezier(.16,.8,.25,1) both}
 .emoji-reaction-burst i{position:absolute;left:0;top:0;font-style:normal;font-size:17px;line-height:1;opacity:0;animation:emojiSpark .78s cubic-bezier(.12,.72,.2,1) var(--delay) both;will-change:transform,opacity}
 @keyframes emojiCore{0%{opacity:0;transform:translate(-50%,-50%) scale(.25) rotate(-18deg)}38%{opacity:1;transform:translate(-50%,-50%) scale(1.35) rotate(8deg)}68%{transform:translate(-50%,-50%) scale(.92)}100%{opacity:0;transform:translate(-50%,-50%) scale(.72) translateY(-13px)}}
 @keyframes emojiSpark{0%{opacity:0;transform:translate(-50%,-50%) scale(.25)}18%{opacity:1}72%{opacity:.95}100%{opacity:0;transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(.55) rotate(var(--rot))}}
 @media(prefers-reduced-motion:reduce){.emoji-reaction-burst{display:none}}
-</style>
-<style id="tread-design-system">
+
+/* consolidated from #tread-design-system */
+
 /* ===== tread. — единая дизайн-система: токены, формы, поверхности, состояния ===== */
 :root{--r-xs:8px;--r-sm:12px;--r-md:16px;--r-lg:22px;--r-xl:28px;--pad:14px;--tx:1;--bub-r:16px;--av-r:50%;
 --bd:1px solid color-mix(in srgb,var(--line) 82%,transparent);--hair:color-mix(in srgb,var(--line) 68%,transparent);
@@ -3584,6 +3601,7 @@ body[data-font=press] *{letter-spacing:-.5px}body[data-font=press] .msg-text{fon
  .sheet .sitem,.sheet .btn,.sheet button{min-height:44px;touch-action:manipulation}
 }
 @media (prefers-reduced-motion:reduce){.tread-code,.tread-code *{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+
 
 </style>
 
