@@ -4783,7 +4783,7 @@ if(window.treadSupabaseReady()){
     }catch(error){
       console.error('[tread] profile renderer failed after opening screen:',error);
       const content=document.getElementById('myProfileContent');
-      if(content&&!content.innerHTML.trim())content.innerHTML='<div class="privacy-note">Профиль открыт, но часть данных не загрузилась. Обнови экран позже.</div>';
+      /* Keep the original profile markup intact; do not replace it with a fake loading notice. */
     }
     try{if(typeof window.haptic==='function')window.haptic()}catch(_){}
   };
