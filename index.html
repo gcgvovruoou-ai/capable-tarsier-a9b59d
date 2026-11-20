@@ -4794,7 +4794,7 @@ if(window.treadSupabaseReady()){
   window.treadGiftCatalog=Array.isArray(payload.catalog)?payload.catalog:[];
   walletState.loaded=true;
   save();
-  try{if(typeof renderMyProfile==='function')renderMyProfile()}catch(e){console.warn('Profile wallet refresh:',e)}
+  try{if(document.getElementById('screen-my-profile')?.classList.contains('on')&&typeof window.renderMenu==='function')window.renderMenu()}catch(e){console.warn('Profile wallet refresh:',e)}
   return data.wallet;
  };
  window.ensureElix=function(){
@@ -4913,7 +4913,7 @@ if(window.treadSupabaseReady()){
  };
  window.addEventListener('tread-auth-changed',event=>{
   walletState.loaded=false;
-  if(event.detail)window.treadWalletSync().then(()=>{try{if(typeof renderMyProfile==='function')renderMyProfile()}catch(e){console.warn('Profile wallet refresh:',e)}}).catch(e=>console.warn('Wallet sync after sign-in:',e?.message||e));
+  if(event.detail)window.treadWalletSync().then(()=>{try{if(document.getElementById('screen-my-profile')?.classList.contains('on')&&typeof window.renderMenu==='function')window.renderMenu()}catch(e){console.warn('Profile wallet refresh:',e)}}).catch(e=>console.warn('Wallet sync after sign-in:',e?.message||e));
   else{window.treadGiftCatalog=[];walletState.loaded=false;walletState.legacyImported=false;data.wallet={balance:1000,history:[],inventory:[],giftCounters:{},unlimitedOwner:false};save();}
  });
 })();
