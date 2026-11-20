@@ -1357,6 +1357,23 @@ function nextChatMessageId(chat=currentChat){
  window.__treadLastMessageId=id;
  return id;
 }
+function normalizeChatMessageIds(chat){
+ if(!chat)return;
+ const seen=new Set();let changed=false;
+ const normalize=message=>{
+  if(message.id==null||seen.has(String(message.id))){
+   let id=nextChatMessageId(chat);
+   while(seen.has(String(id)))id=nextChatMessageId(chat);
+   message.id=id;changed=true;
+  }
+  seen.add(String(message.id));
+ };
+ for(const message of chat.messages||[]){
+  normalize(message);
+  for(const reply of message.replies||[])normalize(reply);
+ }
+ if(changed)save();
+}
 function findTopParentByMessage(chat,target){
  if(!chat||!target)return null;
  for(const m of chat.messages||[]){if(m===target||(m.replies||[]).includes(target))return m}
@@ -1635,6 +1652,7 @@ function jumpTo(id){
 }
 
 function renderMessages(prevLastReadTs){
+  normalizeChatMessageIds(currentChat);
   const el=document.getElementById('messages');
   if(!currentChat.messages.length){el.innerHTML=`<div class="empty"><div class="empty-title">тут пусто</div>напиши первым</div>`;return}
   let html='',lastDay='',dividerShown=false;
