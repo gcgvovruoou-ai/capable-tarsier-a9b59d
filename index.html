@@ -4646,5 +4646,29 @@ if(window.treadSupabaseReady()){
 .gift-art-display .pepe-art{box-sizing:border-box}
 @media(max-width:380px){.pst-picker-grid{gap:7px}.pst-picker-tile{border-radius:12px}}
 </style>
+<script id="tread-profile-open-guard">
+(()=>{
+  const originalRender=window.renderMyProfile;
+  const fallback=()=>{
+    const root=document.getElementById('myProfileContent');
+    if(!root)return;
+    const me=window.data?.me||{},wallet=window.data?.wallet||{};
+    const safeName=String(me.name||'Профиль').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    root.innerHTML='<div class="st-wrap"><div class="st-hero"><div class="st-id"><div class="st-nick">'+safeName+'</div><div class="st-handle">Профиль tread.</div></div></div><div class="st-tiles"><button class="st-tile" onclick="openElixWallet()"><b>'+(wallet.unlimitedOwner?'∞':Number(wallet.balance||0).toLocaleString('ru'))+'</b><small>Эликсы</small></button><button class="st-tile" onclick="openProfileGifts()"><b>'+(wallet.inventory||[]).length+'</b><small>Подарки</small></button><button class="st-tile" onclick="openProfileStickerPicker()"><b>✦</b><small>Стикер</small></button></div><div class="privacy-note">Не удалось загрузить часть настроек. Основные разделы профиля доступны выше.</div></div>';
+  };
+  window.renderMyProfile=function(){
+    try{if(typeof originalRender==='function')return originalRender.apply(this,arguments)}
+    catch(error){console.error('tread profile render failed',error);fallback()}
+  };
+  window.openMyProfile=function(){
+    const screen=document.getElementById('screen-my-profile');
+    try{window.renderMyProfile()}catch(error){console.error('tread profile open failed',error);fallback()}
+    if(screen)screen.classList.remove('settings-page-open');
+    if(typeof window.syncBottomNav==='function')window.syncBottomNav('profile');
+    if(typeof window.openScreen==='function')window.openScreen('screen-my-profile');
+    else if(screen){document.querySelectorAll('.screen').forEach(x=>x.classList.remove('on'));screen.classList.add('on')}
+  };
+})();
+</script>
 </body>
 </html>
