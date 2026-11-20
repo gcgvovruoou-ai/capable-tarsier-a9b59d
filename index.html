@@ -68,7 +68,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);ove
 .chat-time{font-size:11.5px;color:var(--muted);flex-shrink:0}
 .chat-preview{font-size:12.5px;color:var(--muted);line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-.screen{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--bg);opacity:0;pointer-events:none;transform:translateX(30px);transition:opacity .22s,transform .22s cubic-bezier(.16,1,.3,1);z-index:10}
+.screen{position:absolute;top:var(--tread-vv-top,0px);right:0;bottom:var(--tread-vv-bottom,0px);left:0;display:flex;flex-direction:column;background:var(--bg);opacity:0;pointer-events:none;transform:translateX(30px);transition:opacity .22s,transform .22s cubic-bezier(.16,1,.3,1);z-index:10}
 .screen.on{opacity:1;pointer-events:auto;transform:translateX(0)}
 #screen-list{opacity:1;pointer-events:auto;transform:none;}
 .chat-header{padding:14px 18px;padding-top:calc(14px + env(safe-area-inset-top));display:flex;align-items:center;gap:8px;flex-shrink:0;background:var(--bg);border-bottom:1px solid var(--line);z-index:5;cursor:pointer}
@@ -269,10 +269,11 @@ html[data-out=solid] #messages .msg.mine .msg-receipt.read{color:#fff;filter:dro
 .settings-select{max-width:125px;background:var(--card-hi);color:var(--text);border:1px solid var(--line);border-radius:9px;padding:7px 8px;font-size:12px;outline:none}
 .profile-section{padding:0 2px;margin-bottom:25px}.profile-section-title{margin-left:5px}.name-emoji{font-size:17px;vertical-align:2px}
 
-.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+.sheet-bg{position:fixed;top:var(--tread-vv-top,0px);right:0;bottom:var(--tread-vv-bottom,0px);left:0;background:rgba(0,0,0,.6);z-index:100;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
 .sheet-bg.open{opacity:1;pointer-events:auto}
 .sheet{background:var(--card);width:100%;max-width:900px;border-radius:20px 20px 0 0;padding:20px 18px;padding-bottom:calc(20px + env(safe-area-inset-bottom));transform:translateY(30px);transition:transform .25s cubic-bezier(.16,1,.3,1);max-height:88vh;overflow-y:auto}
 .sheet-bg.open .sheet{transform:translateY(0)}
+.sheet-bg.keyboard-open .sheet{max-height:calc(100% - 16px);overscroll-behavior:contain}
 .grip{width:36px;height:4px;background:var(--line);border-radius:2px;margin:0 auto 18px}
 .sheet h2{font-size:17px;font-weight:700;margin-bottom:16px}
 .sitem{padding:14px 4px;font-size:14.5px;cursor:pointer;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px}
@@ -4441,60 +4442,50 @@ if(window.treadSupabaseReady()){
 
 
 
-<style id="tread-keyboard-chat-fix">
-:root{--tread-vv-top:0px;--tread-vv-height:100%;--tread-kb:0px}
-.screen.keyboard-open{top:var(--tread-vv-top)!important;bottom:auto!important;height:var(--tread-vv-height)!important}
-#sheetBg.keyboard-open{top:var(--tread-vv-top)!important;bottom:auto!important;height:var(--tread-vv-height)!important}
-#sheetBg.keyboard-open .sheet{max-height:88%;overflow-y:auto;overscroll-behavior:contain}
-#screen-chat .input-area,#screen-post .input-area{bottom:0!important;padding-bottom:max(8px,env(safe-area-inset-bottom))}
-#screen-chat .messages{padding-bottom:14px}
-.screen.keyboard-open .input-area{transition:none}
-.presence-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#35c979;margin-right:5px;box-shadow:0 0 0 3px rgba(53,201,121,.13)}
-</style>
-<script id="tread-keyboard-viewport-fix">
+
+<script id="tread-keyboard-viewport">
 (()=>{
- const vv=window.visualViewport;
- if(!vv)return;
- let fullHeight=Math.max(window.innerHeight,document.documentElement.clientHeight,vv.height);
- let lastOrientation=window.orientation||0,raf=0;
+ const viewport=window.visualViewport;
+ if(!viewport)return;
+ const root=document.documentElement;
+ let frame=0;
  const update=()=>{
-  cancelAnimationFrame(raf);
-  raf=requestAnimationFrame(()=>{
-   const orientation=window.orientation||0;
-   if(orientation!==lastOrientation){
-    lastOrientation=orientation;
-    fullHeight=Math.max(window.innerHeight,document.documentElement.clientHeight,vv.height);
-   }
-   const keyboard=Math.max(0,fullHeight-vv.height-vv.offsetTop);
-   const open=keyboard>100;
-   const root=document.documentElement;
-   root.style.setProperty('--tread-vv-top',open?vv.offsetTop+'px':'0px');
-   root.style.setProperty('--tread-vv-height',open?vv.height+'px':'100%');
-   root.style.setProperty('--tread-kb',open?keyboard+'px':'0px');
-   document.querySelectorAll('.screen').forEach(el=>el.classList.toggle('keyboard-open',open&&el.classList.contains('on')));
-   document.getElementById('sheetBg')?.classList.toggle('keyboard-open',open&&document.getElementById('sheetBg').classList.contains('open'));
-   if(open){
-    const active=document.activeElement;
-    if(active&&active.matches('input,textarea,[contenteditable="true"]')){
-     requestAnimationFrame(()=>{
-      const sheet=document.getElementById('sheet');
-      if(sheet&&sheet.contains(active)){
-       const r=active.getBoundingClientRect(),sr=sheet.getBoundingClientRect();
-       if(r.bottom>sr.bottom-12)sheet.scrollTop+=r.bottom-sr.bottom+24;
-      }
-     });
+  cancelAnimationFrame(frame);
+  frame=requestAnimationFrame(()=>{
+   const layoutHeight=window.innerHeight;
+   const top=Math.max(0,viewport.offsetTop||0);
+   const bottom=Math.max(0,layoutHeight-viewport.height-top);
+   const keyboardOpen=bottom>100;
+   root.style.setProperty('--tread-vv-top',keyboardOpen?top+'px':'0px');
+   root.style.setProperty('--tread-vv-bottom',keyboardOpen?bottom+'px':'0px');
+   document.body.classList.toggle('keyboard-open',keyboardOpen);
+   const bg=document.getElementById('sheetBg');
+   if(bg){
+    bg.classList.toggle('keyboard-open',keyboardOpen&&bg.classList.contains('open'));
+    if(keyboardOpen&&bg.classList.contains('open')){
+     const sheet=document.getElementById('sheet');
+     const active=document.activeElement;
+     if(sheet&&active&&sheet.contains(active)){
+      const field=active.getBoundingClientRect();
+      const panel=sheet.getBoundingClientRect();
+      const visibleBottom=Math.min(panel.bottom,layoutHeight-bottom);
+      if(field.bottom>visibleBottom-16)sheet.scrollTop+=field.bottom-visibleBottom+24;
+      else if(field.top<panel.top+12)sheet.scrollTop-=panel.top+12-field.top;
+     }
     }
    }
   });
  };
- vv.addEventListener('resize',update);
- vv.addEventListener('scroll',update);
+ viewport.addEventListener('resize',update);
+ viewport.addEventListener('scroll',update);
  window.addEventListener('resize',update);
- window.addEventListener('orientationchange',()=>setTimeout(update,300));
- document.addEventListener('focusin',e=>{if(e.target?.matches('input,textarea,[contenteditable="true"]'))setTimeout(update,80)});
- document.addEventListener('focusout',e=>{if(e.target?.matches('input,textarea,[contenteditable="true"]'))setTimeout(update,220)});
- const observer=new MutationObserver(update);
- observer.observe(document.getElementById('sheetBg')||document.body,{attributes:true,attributeFilter:['class']});
+ window.addEventListener('orientationchange',()=>setTimeout(update,250));
+ document.addEventListener('focusin',e=>{
+  if(e.target&&e.target.matches('input,textarea,[contenteditable="true"]'))setTimeout(update,80);
+ });
+ document.addEventListener('focusout',e=>{
+  if(e.target&&e.target.matches('input,textarea,[contenteditable="true"]'))setTimeout(update,160);
+ });
  update();
 })();
 </script>
