@@ -4527,5 +4527,96 @@ if(window.treadSupabaseReady()){
  update();
 })();
 </script>
+
+<style id="tread-profile-sticker-gift-render-fix-style">
+/* Premium profile stickers stay vector-animated, including migrated legacy selections. */
+.pst:not(.pst-emo) svg{animation:pstPulse 2.8s ease-in-out infinite;transform-origin:center}
+.elix-gift-center .elix-star.elix-gift-art{width:116px;height:108px;margin:4px auto 8px;display:grid;place-items:center;font-size:0;line-height:0;animation:none;filter:none}
+.elix-gift-center .elix-gift-art .gl-art{width:112px;height:100px;animation:giftFloat 3.4s ease-in-out infinite}
+.elix-gift-center .elix-gift-art .gl-art .l1{animation:glSway 3.2s ease-in-out infinite}
+.elix-gift-center .elix-gift-art .gl-art .l2{animation:glSway 2.4s ease-in-out infinite reverse}
+.elix-gift-center .elix-gift-art .gl-art .gw{animation:glGlow 2.6s ease-in-out infinite}
+.elix-gift-center .elix-gift-art .gl-art .sp{animation:pstTwink 1.8s infinite}
+.elix-gift-center .elix-gift-art .pepe-art{width:112px;height:100px;margin:auto}
+.elix-gift-center .elix-gift-art img{width:108px;height:104px;object-fit:contain}
+.gift-reveal-art .gl-art{width:150px;height:130px;margin:auto;animation:giftFloat 3.4s ease-in-out infinite}
+.gift-reveal-art .pepe-art{width:150px;height:130px;margin:auto}
+.gift-reveal-art .gl-art svg{width:100%;height:100%}
+</style>
+<script id="tread-profile-sticker-gift-render-fix">
+(()=>{
+  const emojiMap={
+    '🐸':'happy','🦊':'cool','🐱':'love','🐼':'happy','🐻':'happy','🐰':'love',
+    '🦋':'star','🐝':'party','🐙':'think','🦄':'star','🐉':'angry','👾':'wow',
+    '🤖':'cool','👻':'sleepy','💀':'angry','🌟':'star','✨':'star','🌙':'sleepy',
+    '🔥':'angry','💎':'star','🍀':'happy','🍓':'love','🍄':'sick','🎧':'cool',
+    '🎮':'cool','🧸':'love','🪐':'think','🌈':'party','🫧':'star'
+  };
+  const aliasMap={flame:'angry',heart:'love',crown:'cool',gem:'star',ghost:'sleepy',rocket:'party',moon:'sleepy',bolt:'wow',clover:'happy',planet:'think'};
+  const ids=Array.isArray(window.STK_IDS)?window.STK_IDS:[];
+  const normalizeSticker=value=>{
+    const v=String(value??'').trim();
+    if(!v)return '';
+    if(ids.includes(v))return v;
+    if(aliasMap[v])return aliasMap[v];
+    if(emojiMap[v])return emojiMap[v];
+    return 'happy';
+  };
+
+  // Migrate old emoji-only profile selections to the matching animated SVG sticker.
+  try{
+    const current=data?.me?.profileSticker;
+    if(current&&!ids.includes(String(current))){
+      data.me.profileSticker=normalizeSticker(current);
+      save();
+    }
+  }catch(e){console.warn('Profile sticker migration failed',e)}
+
+  // Saving from the picker always returns to the profile root, not a stale settings subpage.
+  window.saveProfileSticker=function(){
+    if(window.pendingProfileSticker===undefined)return;
+    const selected=normalizeSticker(window.pendingProfileSticker);
+    data.me.profileSticker=selected;
+    delete window.pendingProfileSticker;
+    save();
+    closeSheet();
+    if(typeof window.backToSettingsMenu==='function')window.backToSettingsMenu();
+    else if(typeof window.openMyProfile==='function')window.openMyProfile();
+    if(typeof toast==='function')toast('Премиум-стикер профиля обновлён');
+  };
+
+  // Use the same animated vector artwork in chat messages and in the gift reveal.
+  const giftArtHTML=gift=>{
+    if(!gift)return '✦';
+    if(gift.itemImage)return '<img src="'+String(gift.itemImage).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')+'" alt="">';
+    const item={id:String(gift.itemId||''),name:String(gift.itemName||'Подарок'),icon:String(gift.itemIcon||'✦')};
+    try{
+      if(item.id==='pepe')return pepeGiftArt();
+      if(typeof GA!=='undefined'&&GA[item.id]&&typeof glArt==='function')return glArt(item);
+    }catch(e){console.warn('Gift artwork render failed',e)}
+    return esc(item.icon);
+  };
+  const previousRenderMsg=window.renderMsg;
+  if(typeof previousRenderMsg==='function'){
+    window.renderMsg=function(m,index){
+      let html=previousRenderMsg.apply(this,arguments);
+      if(!m?.gift?.itemName)return html;
+      const art=giftArtHTML(m.gift);
+      return html.replace(/<span class="elix-star">[\s\S]*?<\/span>/,'<span class="elix-star elix-gift-art">'+art+'</span>');
+    };
+  }
+  const previousOpenReceivedGift=window.openReceivedGift;
+  if(typeof previousOpenReceivedGift==='function'){
+    window.openReceivedGift=function(id){
+      previousOpenReceivedGift.apply(this,arguments);
+      const message=currentChat?.messages?.find(x=>String(x.id)===String(id));
+      if(!message?.gift?.itemName)return;
+      const art=document.querySelector('.gift-reveal .gift-reveal-art');
+      if(art)art.innerHTML=giftArtHTML(message.gift);
+    };
+  }
+})();
+</script>
+
 </body>
 </html>
