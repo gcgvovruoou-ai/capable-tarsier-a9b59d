@@ -4780,7 +4780,7 @@ if(window.treadSupabaseReady()){
  };
 
  const localEnsureElix=window.ensureElix;
- const walletState={loaded:false,promise:null};
+ const walletState={loaded:false,promise:null,legacyImported:false};
  window.treadGiftCatalog=[];
  const applyWalletSnapshot=payload=>{
   if(!payload)throw new Error('Пустой ответ сервера кошелька');
@@ -4810,6 +4810,14 @@ if(window.treadSupabaseReady()){
   if(!window.treadCurrentUser||!window.treadSupabaseReady())return false;
   if(walletState.promise)return walletState.promise;
   walletState.promise=(async()=>{
+   if(window.treadCurrentUser.id==='2dddbfcd-9aae-4220-9ad0-7444c6e09fbd'&&!walletState.legacyImported){
+    const legacyItems=(Array.isArray(data.wallet?.inventory)?data.wallet.inventory:[])
+     .filter(g=>g&&g.id&&g.id!=='pepe'&&!g.seeded).slice(0,100);
+    const imported=await window.treadSupabase.rpc('tread_import_legacy_gifts',{p_items:legacyItems});
+    if(imported.error)console.warn('Legacy gift import skipped:',imported.error.message);
+    else{applyWalletSnapshot(imported.data);walletState.legacyImported=true;return true;}
+    walletState.legacyImported=true;
+   }
    const {data:payload,error}=await window.treadSupabase.rpc('tread_wallet_snapshot');
    if(error)throw error;
    applyWalletSnapshot(payload);
@@ -4899,7 +4907,7 @@ if(window.treadSupabaseReady()){
  window.addEventListener('tread-auth-changed',event=>{
   walletState.loaded=false;
   if(event.detail)window.treadWalletSync().catch(e=>console.warn('Wallet sync after sign-in:',e?.message||e));
-  else{window.treadGiftCatalog=[];walletState.loaded=false;data.wallet={balance:1000,history:[],inventory:[],giftCounters:{},unlimitedOwner:false};save();}
+  else{window.treadGiftCatalog=[];walletState.loaded=false;walletState.legacyImported=false;data.wallet={balance:1000,history:[],inventory:[],giftCounters:{},unlimitedOwner:false};save();}
  });
 })();
 </script>
