@@ -1,0 +1,9 @@
+{
+  "$schema": "https://unpkg.com/wrangler@4.50.0/config-schema.json",
+  "name": "trea",
+  "compatibility_date": "2026-11-20",
+  "assets": {
+    "directory": ".",
+    "not_found_handling": "single-page-application"
+  }
+}
