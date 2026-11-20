@@ -4755,7 +4755,7 @@ if(window.treadSupabaseReady()){
   ensureElix();const items=data.wallet.inventory.slice().sort((a,b)=>(b.boughtAt||0)-(a.boughtAt||0));
   const total=items.reduce((sum,g)=>sum+(Number(g.price)||0),0);
   const html=items.length?'<div class="nft-grid">'+items.map(g=>card(g,'inv',true)).join('')+'</div>':'<div class="gift-collection-empty">Пока подарков нет. Загляни в магазин, чтобы собрать коллекцию.</div>';
-  sheet('<div class="grip"></div><div class="gift-collection-head"><span class="gch-icon">✦</span><div class="gch-copy"><b>Мои NFT-подарки</b><small>'+items.length+' в коллекции · стоимость '+formatElix(total)+' ✦</small></div></div>'+html+'<button class="btn sec gift-collection-shop" onclick="openElixWallet(\'shop\')">Магазин подарков</button>');
+  sheet('<div class="grip"></div><div class="gift-collection-head"><span class="gch-icon">✦</span><div class="gch-copy"><b>Мои NFT-подарки</b><small>'+items.length+' в коллекции · стоимость '+formatElix(total)+' ✦</small></div></div>'+html+'<button class="btn sec gift-collection-shop" onclick="window.openGiftShop()">Магазин подарков</button>');
   const sh=document.getElementById('sheet');if(sh)sh.classList.add('gift-collection-sheet');
  };
  window.openElixWallet=function(tab='wallet'){
@@ -4765,7 +4765,7 @@ if(window.treadSupabaseReady()){
   const body=tab==='shop'?'<div class="nft-grid">'+(window.treadGiftCatalog?.length?window.treadGiftCatalog:ELIX_GIFTS).map(g=>card(g,'shop')).join('')+'</div>':
    tab==='collection'?(inv.length?'<div class="nft-grid">'+inv.map(g=>card(g,'inv')).join('')+'</div>':'<div class="privacy-note">Коллекция пока пуста. Загляни в магазин подарков.</div>')+'<div class="privacy-note">После покупки подарок нельзя продать 24 часа. Передаривание доступно сразу; таймер продажи начинается заново.</div>':
    '<div class="profile-section-title">История операций</div>'+rows+'<div class="privacy-note">Продажа подарков облагается комиссией '+ELIX_SELL_FEE+'%. Это локальный тест: реальные платежи пока не подключены.</div>';
-  sheet('<div class="grip"></div><div style="text-align:center;padding:12px 0 15px"><div class="elix-gem" style="margin:auto;width:58px;height:58px;font-size:32px">✦</div><div class="elix-bal '+(data.wallet.unlimitedOwner?'inf':'')+'" id="elixBal">'+(data.wallet.unlimitedOwner?'∞':'')+'</div><div style="color:var(--muted)">эликсов</div><div style="font-size:12px;color:var(--muted);margin-top:8px">'+(data.wallet.unlimitedOwner?'Для владельца действует бесконечный баланс':'Внутренняя валюта tread.')+'</div></div><div class="elix-shop-tabs"><button class="'+(tab==='wallet'?'active':'')+'" onclick="openElixWallet(\'wallet\')">Кошелёк</button><button class="'+(tab==='shop'?'active':'')+'" onclick="openElixWallet(\'shop\')">Магазин</button><button class="'+(tab==='collection'?'active':'')+'" onclick="openElixWallet(\'collection\')">Коллекция</button></div>'+body);
+  sheet('<div class="grip"></div><div style="text-align:center;padding:12px 0 15px"><div class="elix-gem" style="margin:auto;width:58px;height:58px;font-size:32px">✦</div><div class="elix-bal '+(data.wallet.unlimitedOwner?'inf':'')+'" id="elixBal">'+(data.wallet.unlimitedOwner?'∞':'')+'</div><div style="color:var(--muted)">эликсов</div><div style="font-size:12px;color:var(--muted);margin-top:8px">'+(data.wallet.unlimitedOwner?'Для владельца действует бесконечный баланс':'Внутренняя валюта tread.')+'</div></div><div class="elix-shop-tabs"><button class="'+(tab==='wallet'?'active':'')+'" onclick="openElixWallet(\'wallet\')">Кошелёк</button><button class="'+(tab==='shop'?'active':'')+'" onclick="window.openGiftShop()">Магазин</button><button class="'+(tab==='collection'?'active':'')+'" onclick="openElixWallet(\'collection\')">Коллекция</button></div>'+body);
   if(tab==='collection'){const sh=document.getElementById('sheet');if(sh)sh.classList.add('gift-collection-sheet')}
   if(!data.wallet.unlimitedOwner&&typeof countUp==='function')countUp(document.getElementById('elixBal'),data.wallet.balance);
  };
@@ -4836,6 +4836,11 @@ if(window.treadSupabaseReady()){
  window.openElixWallet=async function(tab='wallet'){
   if(!await requireWallet())return;
   return localOpenWallet(tab);
+ };
+ window.openGiftShop=async function(){
+  if(!await requireWallet())return;
+  try{return localOpenWallet('shop')}
+  catch(e){console.error('Gift shop render failed:',e);toast('Не удалось открыть магазин: '+(e?.message||e))}
  };
  const localOpenProfileGifts=window.openProfileGifts;
  window.openProfileGifts=async function(){
