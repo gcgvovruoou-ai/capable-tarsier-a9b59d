@@ -3112,7 +3112,8 @@ crystal:'<defs><linearGradient id="kA" x1="0" y1="0" x2="1" y2="1"><stop stop-co
 };
 const glArt=g=>`<div class="gl-art" role="img" aria-label="${esc(g.name||'Подарок')}"><svg viewBox="0 0 180 160" aria-hidden="true">${GA[g.id]}</svg></div>`;
 const gart=g=>g.id==='pepe'?pepeGiftArt():GA[g.id]?glArt(g):`<span class="tgg-art">${g.icon||'🎁'}</span>`;
-window.treadGiftArt=g=>{if(!g)return '';if(g.image)return '<img class="gift-render-image" src="'+String(g.image).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')+'" alt="">';return gart(g)};
+const giftModelId=g=>{const id=String(g?.id||'').toLowerCase();if(GA[id]||id==='pepe')return id;const n=String(g?.name||'').toLowerCase();if(/роз|rose/.test(n))return 'rose';if(/серд|heart/.test(n))return 'heart';if(/бабоч|butterfly/.test(n))return 'butterfly';if(/корон|crown/.test(n))return 'crown';if(/звезд|звёзд|star/.test(n))return 'star';if(/кристалл|crystal|алмаз|diamond/.test(n))return 'crystal';if(/пепе|pepe|лягуш/.test(n))return 'pepe';return id};
+window.treadGiftArt=g=>{if(!g)return '';if(g.image)return '<img class="gift-render-image" src="'+String(g.image).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')+'" alt="">';const id=giftModelId(g),item={...g,id};return gart(item)};
 const gcard=(g,click,price)=>{const[a,b]=gth(g);const art=(g.id==='pepe'||GA[g.id])?`<div class="tgg-art">${gart(g)}</div>`:gart(g);return `<div class="tgg" style="--g1:${a};--g2:${b}" onclick="${click}">${price?'':`<span class="tgg-no">${gnum(g)}</span>`}${art}<span class="tgg-name">${esc(g.name)}</span><span class="tgg-price">✦ ${formatElix(g.price)}</span></div>`};
 window.openGiftView=function(src,id){ensureElix();const inv=src==='inv';const g=inv?data.wallet.inventory.find(x=>x.uid===id):ELIX_GIFTS.find(x=>x.id===id);if(!g)return;
  const[a,b]=gth(g),left=inv?Math.max(0,(g.sellAfter||g.boughtAt+ELIX_SELL_LOCK)-Date.now()):0,can=left===0;
@@ -4615,12 +4616,12 @@ if(window.treadSupabaseReady()){
   const giftArtHTML=gift=>{
     if(!gift)return '✦';
     if(gift.itemImage)return '<img src="'+String(gift.itemImage).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')+'" alt="">';
-    const item={id:String(gift.itemId||''),name:String(gift.itemName||'Подарок'),icon:String(gift.itemIcon||'✦')};
+    const rawId=String(gift.itemId||'');const item={id:giftModelId({id:rawId,name:gift.itemName}),name:String(gift.itemName||'Подарок'),icon:String(gift.itemIcon||'🎁')};
     try{
       if(item.id==='pepe')return pepeGiftArt();
       if(typeof GA!=='undefined'&&GA[item.id]&&typeof glArt==='function')return glArt(item);
     }catch(e){console.warn('Gift artwork render failed',e)}
-    return esc(item.icon);
+    return typeof window.treadGiftArt==='function'?window.treadGiftArt(item):esc(item.icon||'🎁');
   };
   const previousRenderMsg=window.renderMsg;
   if(typeof previousRenderMsg==='function'){
