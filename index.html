@@ -4737,10 +4737,6 @@ if(window.treadSupabaseReady()){
   const id=canonical(g);
   if(id==='pepe')return pepeGiftArt();
   if(id&&GA[id]&&typeof gart==='function')return gart({...g,id});
-  if(g?.image){
-   const src=escHtml(g.image);
-   return '<img class="gift-render-image" src="'+src+'" alt="'+escHtml(g.name||g.itemName||'Подарок')+'" onerror="this.outerHTML=\''+genericArt.replace(/'/g,"&#39;")+'\'">';
-  }
   return genericArt;
  };
  window.treadGiftModelId=canonical;
