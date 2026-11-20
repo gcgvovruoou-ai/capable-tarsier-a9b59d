@@ -280,7 +280,7 @@ html[data-out=solid] #messages .msg.mine .msg-receipt.read{color:#fff;filter:dro
 .sitem:last-child{border-bottom:none}
 .sitem:active{background:var(--card-hi)}
 .sitem.danger{color:var(--danger)}
-.sitem .si{width:20px;min-width:20px;display:inline-flex;align-items:center;justify-content:center;font-size:15px;opacity:.8}.tread-ui-icon{width:18px;height:18px;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}.bottom-nav-icon .tread-ui-icon{width:21px;height:21px}.tab .tread-ui-icon{width:15px;height:15px;vertical-align:-2px;display:inline-block;margin-right:5px}.gift-btn-icon .tread-ui-icon{width:25px;height:25px}.chat-av .tread-ui-icon{width:24px;height:24px;color:#fff}.mod-badge .tread-ui-icon{width:12px;height:12px}.muted-icon .tread-ui-icon{width:13px;height:13px;vertical-align:-2px;display:inline-block}
+.sitem .si{width:20px;min-width:20px;display:inline-flex;align-items:center;justify-content:center;font-size:15px;opacity:.8}.tread-ui-icon{width:18px;height:18px;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}.bottom-nav-icon .tread-ui-icon{width:21px;height:21px}.tab .tread-ui-icon{width:15px;height:15px;vertical-align:-2px;display:inline-block;margin-right:5px}.gift-btn-icon .tread-ui-icon{width:25px;height:25px}.chat-av .tread-ui-icon{width:24px;height:24px;color:#fff}.mod-badge .tread-ui-icon{width:12px;height:12px}.muted-icon .tread-ui-icon{width:13px;height:13px;vertical-align:-2px;display:inline-block}.attach-btn .tread-ui-icon{width:18px;height:18px}.feed-comment-link .tread-ui-icon{width:15px;height:15px}
 .sitem .slabel{flex:1}
 .sitem .sval{font-size:12.5px;color:var(--muted)}
 .field{margin-bottom:14px}
@@ -1153,9 +1153,9 @@ html,body{background:var(--bg)}.app{isolation:isolate}
     </div>
     <div class="attach-preview" id="msgAttachPreview"></div>
     <div class="input-row">
-      <button class="attach-btn" onclick="openAttachSheet('message')">📎</button>
+      <button class="attach-btn" onclick="openAttachSheet('message')" aria-label="Вложения">${treadIcon('paperclip')}</button>
       <textarea id="msgInput" rows="1" placeholder="Сообщение..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage()}" oninput="autoGrowMessageInput(this)" style="resize:none;max-height:120px;overflow-y:auto"></textarea>
-      <button class="attach-btn" id="voiceRecordBtn" title="Записать голосовое" onclick="toggleVoiceRecording()">🎙</button>
+      <button class="attach-btn" id="voiceRecordBtn" title="Записать голосовое" onclick="toggleVoiceRecording()">${treadIcon('microphone')}</button>
       <button class="send-btn" onclick="sendMessage()">↑</button>
     </div>
   </div>
@@ -1194,7 +1194,7 @@ html,body{background:var(--bg)}.app{isolation:isolate}
     </div>
     <div class="attach-preview" id="commentAttachPreview"></div>
     <div class="input-row">
-      <button class="attach-btn" onclick="openAttachSheet('comment')">📷</button>
+      <button class="attach-btn" onclick="openAttachSheet('comment')" aria-label="Прикрепить фото">${treadIcon('camera')}</button>
       <input id="commentInput" placeholder="Комментарий..." onkeypress="if(event.key==='Enter')sendComment()">
       <button class="send-btn" onclick="sendComment()">↑</button>
     </div>
@@ -1482,7 +1482,7 @@ function renderFeedPost(channel,p){
   const body=isTG
     ? (p.text?`<div class="post-excerpt" style="-webkit-line-clamp:5;color:var(--text);font-size:14.5px">${esc(p.text)}</div>`:'')
     : `${p.title?`<div class="post-title">${esc(p.title)}</div>`:''}${p.text?`<div class="post-excerpt">${esc(p.text)}</div>`:''}`;
-  return `<article class="post-card feed-post" data-feed-channel="${channel.id}" data-feed-post="${postIdLiteral(p.id)}" onclick="openFeedPost(${channel.id},${postIdLiteral(p.id)})"><div class="post-head"><button class="post-author feed-channel-link" onclick="event.stopPropagation();openChannel(${channel.id})" aria-label="Открыть канал ${esc(channelName)}">${esc(channelName)} <span aria-hidden="true">↗</span></button><span>·</span><span>${esc(p.author||channel.author||'')}</span><span>·</span><span>${timeStr(p.createdAt)}</span></div>${imageHTML}${body}<div class="post-meta"><div class="post-reactions">${reacts}</div><button class="feed-comment-link" onclick="event.stopPropagation();openFeedPost(${channel.id},${postIdLiteral(p.id)})">💬 ${(p.comments||[]).length} <span>Обсудить</span></button></div></article>`;
+  return `<article class="post-card feed-post" data-feed-channel="${channel.id}" data-feed-post="${postIdLiteral(p.id)}" onclick="openFeedPost(${channel.id},${postIdLiteral(p.id)})"><div class="post-head"><button class="post-author feed-channel-link" onclick="event.stopPropagation();openChannel(${channel.id})" aria-label="Открыть канал ${esc(channelName)}">${esc(channelName)} <span aria-hidden="true">↗</span></button><span>·</span><span>${esc(p.author||channel.author||'')}</span><span>·</span><span>${timeStr(p.createdAt)}</span></div>${imageHTML}${body}<div class="post-meta"><div class="post-reactions">${reacts}</div><button class="feed-comment-link" onclick="event.stopPropagation();openFeedPost(${channel.id},${postIdLiteral(p.id)})">${treadIcon('chat')} ${(p.comments||[]).length} <span>Обсудить</span></button></div></article>`;
 }
 function postIdLiteral(id){return Number.isFinite(Number(id))?Number(id):0}
 function openFeedPost(cid,pid){const ch=data.channels.find(x=>x.id===cid);if(!ch)return;currentChannel=ch;openPost(pid)}
@@ -2020,8 +2020,8 @@ function openChannelMenu(){
     <div class="actions"><button class="btn sec" onclick="closeSheet()">Отмена</button></div>`);
 }
 function openModeSettings(){
-  const modes=[{id:'open',title:'💬 Все (сабреддит)',desc:'Любой участник может публиковать посты сразу'},{id:'admin_only',title:'📖 Только я (блог)',desc:'Как Telegram-канал — пишешь только ты'},{id:'moderated',title:'✋ С проверкой',desc:'Любой предлагает пост, ты одобряешь'}];
-  sheet(`<div class="grip"></div><h2>Режим канала</h2><div class="mode-options">${modes.map(m=>`<div class="mode-opt ${currentChannel.mode===m.id?'on':''}" onclick="setChannelMode('${m.id}')"><div class="mode-opt-title">${m.title}</div><div class="mode-opt-desc">${m.desc}</div></div>`).join('')}</div><div class="actions"><button class="btn sec" onclick="closeSheet()">Закрыть</button></div>`);
+  const modes=[{id:'open',icon:'chat',title:'Все (сабреддит)',desc:'Любой участник может публиковать посты сразу'},{id:'admin_only',icon:'file',title:'Только я (блог)',desc:'Как Telegram-канал — пишешь только ты'},{id:'moderated',icon:'hand',title:'С проверкой',desc:'Любой предлагает пост, ты одобряешь'}];
+  sheet(`<div class="grip"></div><h2>Режим канала</h2><div class="mode-options">${modes.map(m=>`<div class="mode-opt ${currentChannel.mode===m.id?'on':''}" onclick="setChannelMode('${m.id}')"><div class="mode-opt-title">${treadIcon(m.icon)}${m.title}</div><div class="mode-opt-desc">${m.desc}</div></div>`).join('')}</div><div class="actions"><button class="btn sec" onclick="closeSheet()">Закрыть</button></div>`);
 }
 function setChannelMode(mode){currentChannel.mode=mode;save();closeSheet();haptic();toast('Режим обновлён');setTimeout(()=>openChannel(currentChannel.id),200)}
 function openModerationList(){
@@ -2351,7 +2351,7 @@ function openSettingsPage(page){
  <div class="appearance-group"><div class="appearance-group-title">Вид сообщений</div>${toggle('chatBubbles','Закруглённые сообщения','▱')}</div>`;
  if(page==='notifications') html=`<div class="profile-section"><div class="profile-section-title">Личные чаты</div>${toggle('notifications','Уведомления','♧')}${toggle('sounds','Звуки','♫')}${toggle('vibration','Вибрация','≋')}</div><div class="profile-section"><div class="profile-section-title">Группы и лента</div>${toggle('groupNotifications','Уведомления групп','♧')}${toggle('channelNotifications','Уведомления ленты','♧')}${toggle('previewNotifications','Предпросмотр сообщений','▤')}</div>`;
  if(page==='data') html=`<div class="profile-section">${toggle('autoPhoto','Автозагрузка фото','▧',false)}${toggle('autoVideo','Автозагрузка видео','▷',false)}${toggle('autoAudio','Автозагрузка аудио','♫',false)}${toggle('autoPlayAudio','Автовоспроизведение аудио','♫',false)}${row('▤','Использование памяти',`<span class="val" onclick="showStorageUsage()">Открыть ›</span>`)}${row('⌫','Очистить кэш',`<span class="val" onclick="clearLocalCache()">Очистить ›</span>`)}</div>`;
- if(page==='privacy') html=`<div class="profile-section"><div class="profile-section-title">Группы</div><div class="setting-row"><span class="ic">👥</span><span class="settings-nav-copy"><span class="lbl">Тип новых групп</span><small>Применяется при создании группы через кнопку «＋»</small></span></div><div class="appearance-choice" style="padding:0 14px 14px"><button class="appearance-chip ${(data.settings.defaultGroupVisibility||'private')==='private'?'active':''}" onclick="setDefaultGroupVisibility('private')">🔒 Закрытая</button><button class="appearance-chip ${(data.settings.defaultGroupVisibility||'private')==='public'?'active':''}" onclick="setDefaultGroupVisibility('public')">🌐 Открытая</button></div><div class="privacy-note" style="padding:0 14px 14px;border:0;margin:0">Закрытая группа доступна по приглашению. Открытая группа предназначена для свободного поиска и вступления. В этой локальной версии публичность пока действует внутри приложения.</div>${row('☎','Номер телефона',`<span class="val">Никто ›</span>`)}${row('◉','Фото профиля',`<span class="val">Все ›</span>`)}${row('●','Время посещения',`<span class="val">Все ›</span>`)}${toggle('readReceipts','Отметки о прочтении','✓')}${row('⊘','Заблокированные пользователи',`<span class="val" onclick="showBlockedUsers()">Открыть ›</span>`)}</div>`;
+ if(page==='privacy') html=`<div class="profile-section"><div class="profile-section-title">Группы</div><div class="setting-row"><span class="ic">👥</span><span class="settings-nav-copy"><span class="lbl">Тип новых групп</span><small>Применяется при создании группы через кнопку «＋»</small></span></div><div class="appearance-choice" style="padding:0 14px 14px"><button class="appearance-chip ${(data.settings.defaultGroupVisibility||'private')==='private'?'active':''}" onclick="setDefaultGroupVisibility('private')">${treadIcon('lock')}Закрытая</button><button class="appearance-chip ${(data.settings.defaultGroupVisibility||'private')==='public'?'active':''}" onclick="setDefaultGroupVisibility('public')">${treadIcon('globe')}Открытая</button></div><div class="privacy-note" style="padding:0 14px 14px;border:0;margin:0">Закрытая группа доступна по приглашению. Открытая группа предназначена для свободного поиска и вступления. В этой локальной версии публичность пока действует внутри приложения.</div>${row('☎','Номер телефона',`<span class="val">Никто ›</span>`)}${row('◉','Фото профиля',`<span class="val">Все ›</span>`)}${row('●','Время посещения',`<span class="val">Все ›</span>`)}${toggle('readReceipts','Отметки о прочтении','✓')}${row('⊘','Заблокированные пользователи',`<span class="val" onclick="showBlockedUsers()">Открыть ›</span>`)}</div>`;
  if(page==='folders') html=`<div class="profile-section">${row('▣','Создать папку',`<span class="val" onclick="createChatFolder()">＋</span>`)}${row('▤','Управление папками',`<span class="val" onclick="alert((data.settings.chatFolders||[]).join('\\n')||'Папок пока нет')">${(data.settings.chatFolders||[]).length} ›</span>`)}</div>`;
  if(page==='energy') html=`<div class="profile-section">${toggle('premiumAnimations','Плавные анимации','✧')}${toggle('reduceMotion','Уменьшить движение','ϟ',false)}</div>`;
  if(page==='devices') html=`<div class="profile-section">${row('▱','Это устройство',`<span class="val">Текущий сеанс</span>`)}<div class="privacy-note">Список других устройств появится при подключении синхронизации.</div></div>`;
@@ -2567,7 +2567,11 @@ gift:'<rect x="3" y="8" width="18" height="13" rx="2"/><path d="M12 8v13M3 12h18
 microphone:'<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v5M8 22h8"/>',
 music:'<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
 megaphone:'<path d="m3 11 18-5v12L3 13v-2Z"/><path d="M7 14l2 7h4l-2-6M21 10l2-2M21 16l2 2"/>',
-volumeOff:'<path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="m16 9 5 6m0-6-5 6"/>'
+volumeOff:'<path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="m16 9 5 6m0-6-5 6"/>',
+paperclip:'<path d="m21 11.5-8.5 8.5a5 5 0 0 1-7.1-7.1l9.2-9.2a3.5 3.5 0 0 1 5 5l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/>',
+camera:'<path d="M14 4h-4L8 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-4Z"/><circle cx="12" cy="13" r="3.5"/>',
+lock:'<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 1 1 8 0v3"/>',
+globe:'<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/>'
 };
 function treadIcon(name){return '<svg class="tread-ui-icon" viewBox="0 0 24 24" aria-hidden="true">'+(TREAD_UI_ICONS[name]||TREAD_UI_ICONS.file)+'</svg>'}
 
