@@ -1349,6 +1349,26 @@ function toast(msg){let t=document.querySelector('.toast');if(!t){t=document.cre
 
 function findTopParent(chat,id){if(!chat)return null;for(const m of chat.messages||[]){if(String(m.id)===String(id))return m;if(m.replies)for(const r of m.replies)if(String(r.id)===String(id))return m}return null}
 function findMsgInChat(chat,id){if(!chat)return null;for(const m of chat.messages||[]){if(String(m.id)===String(id))return m;if(m.replies)for(const r of m.replies)if(String(r.id)===String(id))return r}return null}
+function nextChatMessageId(chat=currentChat){
+ const used=new Set();
+ for(const m of chat?.messages||[]){if(m.id!=null)used.add(String(m.id));for(const r of m.replies||[])if(r.id!=null)used.add(String(r.id))}
+ let id=Math.max(Date.now(),(window.__treadLastMessageId||0)+1);
+ while(used.has(String(id)))id++;
+ window.__treadLastMessageId=id;
+ return id;
+}
+function findTopParentByMessage(chat,target){
+ if(!chat||!target)return null;
+ for(const m of chat.messages||[]){if(m===target||(m.replies||[]).includes(target))return m}
+ return null;
+}
+function messageFromRenderedElement(chat,el){
+ if(!chat||!el||el.dataset.messageIndex==null)return null;
+ const timeline=[];
+ for(const m of chat.messages||[]){timeline.push(m);for(const reply of m.replies||[])timeline.push(reply)}
+ timeline.sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+ return timeline[Number(el.dataset.messageIndex)]||null;
+}
 function toggleReaction(obj,e){obj.reactions=obj.reactions||{};obj.reactionsBy=obj.reactionsBy||{};if(obj.reactionsBy[data.me.name]===e){delete obj.reactionsBy[data.me.name];obj.reactions[e]=Math.max(0,(obj.reactions[e]||1)-1);if(obj.reactions[e]===0)delete obj.reactions[e]}else{const prev=obj.reactionsBy[data.me.name];if(prev&&obj.reactions[prev]){obj.reactions[prev]=Math.max(0,obj.reactions[prev]-1);if(obj.reactions[prev]===0)delete obj.reactions[prev]}obj.reactionsBy[data.me.name]=e;obj.reactions[e]=(obj.reactions[e]||0)+1}}
 
 // ПРОСТАЯ ЗАГРУЗКА ИЗОБРАЖЕНИЙ
@@ -1623,17 +1643,17 @@ function renderMessages(prevLastReadTs){
   const timeline=[];
   currentChat.messages.forEach(m=>{timeline.push(m);(m.replies||[]).forEach(r=>timeline.push(r));});
   timeline.sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
-  timeline.forEach(m=>{
+  timeline.forEach((m,index)=>{
     const day=dateStr(m.createdAt);
     if(day!==lastDay){html+=`<div class="day-sep">${day}</div>`;lastDay=day}
     if(!dividerShown&&prevLastReadTs&&m.createdAt>prevLastReadTs){html+=`<div style="text-align:center;color:var(--accent);font-size:11px;padding:10px 0;font-weight:600">— новые —</div>`;dividerShown=true}
-    html+=renderMsg(m);
+    html+=renderMsg(m,index);
   });
   el.innerHTML=html;
   setupScrollBtn();
 }
 
-function renderMsg(m){
+function renderMsg(m,messageIndex){
   const reactionsHTML=Object.entries(m.reactions||{}).map(([e,n])=>`<button class="reaction ${isMine(e,m)?'mine':''}" data-reaction-key="${esc(e)}" onclick="toggleReact(${m.id},'${e}',event)">${reactionVisual(e)} <span class="reaction-count">${n}</span></button>`).join('');
   // Рендер плашки ответа (исправленный и надежный)
   let replyRefHTML = '';
@@ -1657,12 +1677,12 @@ function renderMsg(m){
   const avStyle = isMe && data.me.image ? `background-image:url(${data.me.image})` : `background:${hashColor(m.author)}`;
   const avContent = (isMe && data.me.image) ? '' : m.author[0].toUpperCase();
   // Эликсы отображаются как центральное событие чата, а не как обычное сообщение слева.
-  if (m.gift) return `<div class="msg elix-gift-row" id="msg-${m.id}" oncontextmenu="event.preventDefault();openMsgActions(${JSON.stringify(String(m.id))})" data-id="${m.id}">
+  if (m.gift) return `<div class="msg elix-gift-row" id="msg-${m.id}" oncontextmenu="event.preventDefault();openMsgActions(${JSON.stringify(String(m.id))},this)" data-id="${m.id}" data-message-index="${messageIndex}">
     <div class="elix-gift-center" data-rarity="${esc(m.gift.rarity||'')}" ${m.gift.itemName ? `onclick="openReceivedGift(${m.id})"` : ''}><div class="elix-gift-sender">
 ${esc(m.author)} отправил${isMe?'':'а'} подарок</div><span class="elix-star">${m.gift.itemIcon||'✦'}</span><div class="elix-gift-label">${esc(m.gift.itemName||'Подарок tread.')}</div>${m.gift.itemNo?`<small class="gift-serial">${esc('#'+m.gift.itemNo)}</small>`:''}<strong>${m.gift.itemName?'Коллекционный подарок':formatElix(m.gift.amount)+' эликсов'}</strong><small>Для ${esc(m.gift.to||'этого чата')} · ${timeStr(m.createdAt)}</small></div>
   </div>`;
 
-  return `<div class="msg ${isMe?'mine':''}" id="msg-${m.id}" oncontextmenu="event.preventDefault();openMsgActions(${JSON.stringify(String(m.id))})" data-swipe="chat" data-id="${m.id}">
+  return `<div class="msg ${isMe?'mine':''}" id="msg-${m.id}" oncontextmenu="event.preventDefault();openMsgActions(${JSON.stringify(String(m.id))},this)" data-swipe="chat" data-id="${m.id}" data-message-index="${messageIndex}">
     <div class="reply-indicator">↩</div>
     <div class="msg-av" style="${avStyle}" onclick="openUserProfile('${esc(m.author)}')">${avContent}</div>
     <div class="msg-body">
@@ -1764,9 +1784,9 @@ function reactionVisual(e){return String(e).startsWith('stk:')?(window.stk?windo
   }
   function end(){
     if(!g)return;clearTimeout(g.timer);
-    const done=g.active&&g.ready&&!g.long,kind=g.kind,id=g.id;
+    const done=g.active&&g.ready&&!g.long,kind=g.kind,id=g.id,sourceEl=g.el;
     reset(g.active);g=null;
-    if(done){if(kind==='comment')startCommentReply(id);else if(!document.getElementById('msg-'+id)?.classList.contains('elix-gift-row'))startChatReply(id)}
+    if(done){if(kind==='comment')startCommentReply(id);else if(!sourceEl.classList.contains('elix-gift-row'))startChatReply(id,sourceEl)}
   }
   document.addEventListener('touchstart',start,{passive:true});
   document.addEventListener('touchmove',move,{passive:true});
@@ -1808,9 +1828,11 @@ function reactionVisual(e){return String(e).startsWith('stk:')?(window.stk?windo
 window.openMsgActions=openMsgActions;
 
 // ДЕЙСТВИЯ С СООБЩЕНИЕМ
-function openMsgActions(id){
-  const parent=findTopParent(currentChat,id);
-  const m=String(parent?.id)===String(id)?parent:parent?.replies?.find(r=>String(r.id)===String(id));if(!m)return;
+function openMsgActions(id,sourceEl){
+  const exact=messageFromRenderedElement(currentChat,sourceEl);
+  const parent=exact?findTopParentByMessage(currentChat,exact):findTopParent(currentChat,id);
+  const m=exact|| (String(parent?.id)===String(id)?parent:parent?.replies?.find(r=>String(r.id)===String(id)));if(!m||!parent)return;
+  id=m.id;
   const isRoot=String(parent.id)===String(id),canThread=currentChat.type==='group';
   sheet(`<div class="grip"></div><h2>${esc(m.author)}</h2>
     ${m.gift?'':`<div class="sitem" onclick="closeSheet();startChatReply(${id})"><span class="si">↩</span>Ответить</div><div class="sitem" onclick="closeSheet();beginQuoteSelection(${id})"><span class="si">❞</span>Ответить на фрагмент</div><div class="sitem" onclick="closeSheet();beginMultiSelect(${id})"><span class="si">☑</span>Выбрать несколько</div><div class="sitem" onclick="closeSheet();openMessageForward(${id})"><span class="si">↗</span>Переслать</div>`}
@@ -1825,14 +1847,13 @@ function openMsgActions(id){
 }
 
 // ЕДИНАЯ ЛОГИКА ОТВЕТА В ЧАТЕ
-function startChatReply(id){
-    const target=findMsgInChat(currentChat,id);
+function startChatReply(id,sourceEl){
+    const target=messageFromRenderedElement(currentChat,sourceEl)||findMsgInChat(currentChat,id);
     if(!target){toast('Не удалось найти это сообщение. Обнови чат и попробуй ещё раз.');return}
-    if(target.gift){toast('На событие-подарок нельзя ответить');return}
-    const parent=findTopParent(currentChat,id);
-    const m=String(parent?.id)===String(id)?parent:parent?.replies?.find(r=>String(r.id)===String(id));
-    if(!m)return;
-    replyTo={id};
+    if(target.gift)return;
+    const parent=findTopParentByMessage(currentChat,target)||findTopParent(currentChat,id);
+    if(!parent)return;
+    replyTo={id:target.id,parentId:parent.id,parent};
     document.getElementById('chatRbAuthor').textContent='ответ на: '+m.author;
     document.getElementById('chatRbText').textContent=(m.text||'🖼 фото').slice(0,80);
     document.getElementById('chatReplyBanner').classList.add('on');
@@ -1853,11 +1874,11 @@ function sendMessage(){
   const inp=document.getElementById('msgInput');let text=inp.value.trim();if(text&&!text.startsWith('```')&&looksLikeCode(text)){const lang=detectCodeLanguage(text);text='```'+lang+'\n'+text+'\n```'}
   if(!text&&!pendingImage.value&&!pendingAudio.value)return;
   if(!currentChat)return;
-  const newMsg={id:Date.now(),author:data.me.name,text,createdAt:Date.now(),out:true,reactions:{},reactionsBy:{},replies:[],image:pendingImage.value?{...pendingImage.value}:null,audio:pendingAudio.value?{...pendingAudio.value}:null,replyToId:null,replyQuote:replyTo?.quote||null};
+  const newMsg={id:nextChatMessageId(currentChat),author:data.me.name,text,createdAt:Date.now(),out:true,reactions:{},reactionsBy:{},replies:[],image:pendingImage.value?{...pendingImage.value}:null,audio:pendingAudio.value?{...pendingAudio.value}:null,replyToId:null,replyQuote:replyTo?.quote||null};
   
   if(replyTo){
     newMsg.replyToId = replyTo.id;
-    const parent=findTopParent(currentChat,replyTo.id);
+    const parent=replyTo.parent&&currentChat.messages.includes(replyTo.parent)?replyTo.parent:findTopParent(currentChat,replyTo.id);
     if(parent){parent.replies=parent.replies||[];parent.replies.push(newMsg);openThreads[parent.id]=true}else currentChat.messages.push(newMsg)
   }else currentChat.messages.push(newMsg);
   
@@ -2061,7 +2082,7 @@ function showPostReactPicker(){sheet(`<div class="grip"></div><h2>Реакция
 
 // ЕДИНАЯ ЛОГИКА ОТВЕТА В КОММЕНТАРИЯХ
 function startCommentReply(id) {
-  const c = currentPost.comments.find(x => x.id === id);
+  const c = currentPost.comments.find(x => String(x.id) === String(id));
   if (!c) return;
   commentReplyTo = id;
   document.getElementById('commentRbAuthor').textContent='ответ на: '+c.author;
@@ -2762,12 +2783,12 @@ function elixBalance(){return data.wallet.unlimitedOwner?'∞':formatElix(data.w
 function openProfileGifts(){ensureElix();const items=data.wallet.inventory.slice().sort((a,b)=>(b.boughtAt||0)-(a.boughtAt||0));const total=items.reduce((sum,g)=>sum+(Number(g.price)||0),0);const html=items.length?items.map(g=>`<div class="gift-detail-card">${giftArt(g)}<div class="gift-detail-meta"><b>${esc(g.name)}</b><small>От кого: ${esc(g.from||'Не указано')}</small><small>${esc(g.rarity||'Подарок')} · получен ${new Date(g.boughtAt||Date.now()).toLocaleDateString('ru')}</small><div class="gift-value">Стоимость: ${formatElix(g.price||0)} ✦</div></div></div>`).join(''):'<div class="privacy-note">Пока подарков нет.</div>';sheet(`<div class="grip"></div><div style="display:flex;align-items:center;justify-content:space-between;margin:6px 0 12px"><div><b style="font-size:20px">Мои подарки</b><div class="privacy-note" style="margin:3px 0 0">${items.length} в коллекции · общая стоимость ${formatElix(total)} ✦</div></div><span style="font-size:24px">🎁</span></div>${html}<button class="secondary" style="width:100%;margin-top:10px" onclick="openElixWallet('shop')">Открыть магазин подарков</button>`)}
 function openElixWallet(tab='wallet'){ensureElix();const history=data.wallet.history.slice(-10).reverse();const rows=history.length?history.map(x=>`<div class="setting-row"><span class="ic">${x.type==='sent'?'↗':'✦'}</span><span class="settings-nav-copy"><span class="lbl">${esc(x.label||'Операция')}</span><small>${new Date(x.at).toLocaleString('ru')}</small></span><b>${x.type==='sent'?'−':'+'}${formatElix(x.amount)}</b></div>`).join(''):'<div class="privacy-note">Операций пока нет.</div>';const inv=data.wallet.inventory;const inventory=inv.length?`<div class="elix-collection">${inv.map(g=>{const left=Math.max(0,(g.sellAfter||g.boughtAt+ELIX_SELL_LOCK)-Date.now());const canSell=left===0;return `<div class="elix-item">${g.id==='pepe'?pepeGiftArt('') : g.image?`<img class="gift-detail-art" style="margin:0 auto 7px;width:100%;height:104px" src="${esc(g.image)}" alt="${esc(g.name)}" onerror="this.style.display='none'">`:`<span class="art">${g.icon}</span>`}<b>${esc(g.name)}</b><small>От: ${esc(g.from||'Магазин tread.')}<br>${esc(g.rarity||'Подарок')} · ${formatElix(g.price)} ✦</small><div class="privacy-note" style="margin:7px 0 0">В коллекции подарков</div><button onclick="sendCollectibleGift('${g.uid}')" ${currentChat?'':'disabled'}>Передарить в чат</button><button ${canSell?'':'disabled'} onclick="sellElixGift('${g.uid}')">${canSell?'Продать · −'+ELIX_SELL_FEE+'%':`Продажа через ${Math.ceil(left/3600000)} ч`}</button></div>`}).join('')}</div>`:'<div class="privacy-note">Коллекция пока пуста. Загляни в магазин подарков.</div>';sheet(`<div class="grip"></div><div style="text-align:center;padding:12px 0 15px"><div class="elix-gem" style="margin:auto;width:58px;height:58px;font-size:32px">✦</div><div style="font-size:30px;font-weight:800;margin-top:10px">${elixBalance()}</div><div style="color:var(--muted)">эликсов</div><div style="font-size:12px;color:var(--muted);margin-top:8px">${data.wallet.unlimitedOwner?'Для владельца действует бесконечный баланс':'Внутренняя валюта tread.'}</div></div><div class="elix-shop-tabs"><button class="${tab==='wallet'?'active':''}" onclick="openElixWallet('wallet')">Кошелёк</button><button class="${tab==='shop'?'active':''}" onclick="openElixWallet('shop')">Магазин</button><button class="${tab==='collection'?'active':''}" onclick="openElixWallet('collection')">Коллекция</button></div>${tab==='shop'?`<div class="elix-collection">${ELIX_GIFTS.map(g=>`<div class="elix-item"><span class="art">${g.icon}</span><b>${g.name}</b><small>${g.rarity} · ${formatElix(g.price)} ✦</small><button onclick="buyElixGift('${g.id}')">Купить</button></div>`).join('')}</div>`:tab==='collection'?`<div class="profile-section-title">Твои подарки</div>${inventory}<div class="privacy-note">После покупки подарок нельзя продать 24 часа. Передаривание доступно сразу; при передаривании таймер продажи начинается заново.</div>`:`<div class="profile-section-title">История операций</div>${rows}<div class="privacy-note">Продажа подарков облагается фиксированной комиссией ${ELIX_SELL_FEE}%. Это локальный тест: реальные платежи и переводы между аккаунтами пока не подключены.</div>`}`);}
 function buyElixGift(id){ensureElix();const g=ELIX_GIFTS.find(x=>x.id===id);if(!g)return;if(!data.wallet.unlimitedOwner&&data.wallet.balance<g.price){toast('Недостаточно эликсов');return}if(!data.wallet.unlimitedOwner)data.wallet.balance-=g.price;const now=Date.now(),key=giftTypeKey(g);data.wallet.giftCounters=data.wallet.giftCounters||{};const no=(Number(data.wallet.giftCounters[key])||0)+1;data.wallet.giftCounters[key]=no;data.wallet.inventory.push({...g,no,from:'Магазин tread.',uid:'gift_'+now+'_'+Math.random().toString(36).slice(2,7),boughtAt:now,sellAfter:now+ELIX_SELL_LOCK,displayed:false});data.wallet.history.push({type:'buy',amount:g.price,label:'Покупка: '+g.name,at:now});save();openElixWallet('collection');toast('Подарок добавлен в коллекцию');}
-function sendCollectibleGift(uid){ensureElix();if(!currentChat){toast('Сначала открой личный чат');return}if(currentChat.type==='group'){toast('Подарки можно отправлять только пользователю в личном чате');return}const i=data.wallet.inventory.findIndex(x=>x.uid===uid);if(i<0)return;const g=data.wallet.inventory[i];const recipient=currentChat.title||'Чат';currentChat.messages.push({id:Date.now(),author:data.me.name,text:'',createdAt:Date.now(),out:true,reactions:{},reactionsBy:{},replies:[],gift:{amount:0,itemId:g.id,itemUid:g.uid,itemNo:g.no,itemIcon:g.icon,itemName:g.name,itemImage:g.image||null,rarity:g.rarity||'Обычный',to:recipient}});currentChat.createdAt=Date.now();data.wallet.inventory.splice(i,1);data.wallet.history.push({type:'gift',amount:g.price,label:'Передарен: '+g.name+' → '+recipient,at:Date.now()});save();closeSheet();renderMessages(currentChat.lastReadTs);scrollToBottom();requestAnimationFrame(()=>window.giftEventBurst&&window.giftEventBurst(currentChat.messages[currentChat.messages.length-1]?.id));renderMyProfile();toast('Подарок отправлен в чат')}
+function sendCollectibleGift(uid){ensureElix();if(!currentChat){toast('Сначала открой личный чат');return}if(currentChat.type==='group'){toast('Подарки можно отправлять только пользователю в личном чате');return}const i=data.wallet.inventory.findIndex(x=>x.uid===uid);if(i<0)return;const g=data.wallet.inventory[i];const recipient=currentChat.title||'Чат';currentChat.messages.push({id:nextChatMessageId(currentChat),author:data.me.name,text:'',createdAt:Date.now(),out:true,reactions:{},reactionsBy:{},replies:[],gift:{amount:0,itemId:g.id,itemUid:g.uid,itemNo:g.no,itemIcon:g.icon,itemName:g.name,itemImage:g.image||null,rarity:g.rarity||'Обычный',to:recipient}});currentChat.createdAt=Date.now();data.wallet.inventory.splice(i,1);data.wallet.history.push({type:'gift',amount:g.price,label:'Передарен: '+g.name+' → '+recipient,at:Date.now()});save();closeSheet();renderMessages(currentChat.lastReadTs);scrollToBottom();requestAnimationFrame(()=>window.giftEventBurst&&window.giftEventBurst(currentChat.messages[currentChat.messages.length-1]?.id));renderMyProfile();toast('Подарок отправлен в чат')}
 function toggleProfileGift(uid){ensureElix();const g=data.wallet.inventory.find(x=>x.uid===uid);if(!g)return;g.displayed=!g.displayed;save();openElixWallet('collection');renderMyProfile();toast(g.displayed?'Подарок выставлен около аватарки':'Подарок снят с профиля')}
 function sellElixGift(uid){ensureElix();const i=data.wallet.inventory.findIndex(x=>x.uid===uid);if(i<0)return;const g=data.wallet.inventory[i];if(Date.now()<(g.sellAfter||g.boughtAt+ELIX_SELL_LOCK)){toast('Срок запрета продажи ещё не закончился');return}const gross=Math.floor(g.price),fee=Math.ceil(gross*ELIX_SELL_FEE/100),net=gross-fee;data.wallet.inventory.splice(i,1);if(!data.wallet.unlimitedOwner)data.wallet.balance+=net;data.wallet.history.push({type:'sale',amount:net,label:`Продажа ${g.name} · комиссия ${fee} ✦`,at:Date.now()});save();openElixWallet('collection');renderMyProfile();toast(`Продано за ${formatElix(net)} ✦ (комиссия ${formatElix(fee)})`)}
 function openElixGift(){if(!currentChat){toast('Открой личный чат');return}if(currentChat.type==='group'){toast('Эликсы можно отправлять только пользователю в личном чате');return}ensureElix();const target=currentChat.title||'этому чату';const pop=document.createElement('div');pop.className='elix-pop';pop.id='elixGiftPop';pop.innerHTML=`<div class="elix-pop-card"><div class="big">✦</div><h2 style="margin:5px 0">Отправить эликсы</h2><div style="color:var(--muted);font-size:13px">Подарок для «${esc(target)}»</div><input id="elixAmount" type="number" min="1" max="${data.wallet.unlimitedOwner?Number.MAX_SAFE_INTEGER:data.wallet.balance}" step="1" value="100" inputmode="numeric" aria-label="Количество эликсов"><div style="font-size:12px;color:var(--muted);margin:-5px 0 14px">Доступно: ${elixBalance()} ✦</div><div class="elix-pop-actions"><button class="secondary" onclick="closeElixGift()">Отмена</button><button onclick="confirmElixGift()">Подарить ✦</button></div></div>`;document.body.appendChild(pop);pop.addEventListener('click',e=>{if(e.target===pop)closeElixGift()});setTimeout(()=>document.getElementById('elixAmount')?.select(),50)}
 function closeElixGift(){document.getElementById('elixGiftPop')?.remove()}
-function confirmElixGift(){if(!currentChat||currentChat.type==='group'){closeElixGift();toast('Подарки доступны только в личных чатах');return}ensureElix();const input=document.getElementById('elixAmount');const amount=Math.floor(Number(input?.value));if(!Number.isSafeInteger(amount)||amount<1){toast('Укажи количество от 1 эликса');return}if(!data.wallet.unlimitedOwner&&amount>data.wallet.balance){toast('Недостаточно эликсов');return}if(!currentChat){closeElixGift();return}if(!data.wallet.unlimitedOwner)data.wallet.balance-=amount;const recipient=currentChat.title||'Чат';data.wallet.history.push({type:'sent',amount,label:'Подарок: '+recipient,at:Date.now()});const msg={id:Date.now(),author:data.me.name,text:'',createdAt:Date.now(),out:true,reactions:{},reactionsBy:{},replies:[],gift:{amount,currency:'Эликсы',to:recipient}};currentChat.messages.push(msg);currentChat.createdAt=Date.now();save();closeElixGift();renderMessages(currentChat.lastReadTs);scrollToBottom();requestAnimationFrame(()=>window.giftEventBurst&&window.giftEventBurst(msg.id));haptic(18);toast(`Отправлено ${formatElix(amount)} эликсов`);}
+function confirmElixGift(){if(!currentChat||currentChat.type==='group'){closeElixGift();toast('Подарки доступны только в личных чатах');return}ensureElix();const input=document.getElementById('elixAmount');const amount=Math.floor(Number(input?.value));if(!Number.isSafeInteger(amount)||amount<1){toast('Укажи количество от 1 эликса');return}if(!data.wallet.unlimitedOwner&&amount>data.wallet.balance){toast('Недостаточно эликсов');return}if(!currentChat){closeElixGift();return}if(!data.wallet.unlimitedOwner)data.wallet.balance-=amount;const recipient=currentChat.title||'Чат';data.wallet.history.push({type:'sent',amount,label:'Подарок: '+recipient,at:Date.now()});const msg={id:nextChatMessageId(currentChat),author:data.me.name,text:'',createdAt:Date.now(),out:true,reactions:{},reactionsBy:{},replies:[],gift:{amount,currency:'Эликсы',to:recipient}};currentChat.messages.push(msg);currentChat.createdAt=Date.now();save();closeElixGift();renderMessages(currentChat.lastReadTs);scrollToBottom();requestAnimationFrame(()=>window.giftEventBurst&&window.giftEventBurst(msg.id));haptic(18);toast(`Отправлено ${formatElix(amount)} эликсов`);}
 
 // ЗАПУСК
 (()=>{const intro=document.getElementById('treadIntro');if(intro){const reduced=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;window.setTimeout(()=>intro.classList.add('hide'),reduced?250:1550);window.setTimeout(()=>intro.remove(),reduced?850:2200)}})();
@@ -2791,7 +2812,7 @@ function openMessageForward(id){openForwardPicker([Number(id)])}
 let messageForwardIds=[];let messageForwardChats=new Set();
 function openForwardPicker(ids){messageForwardIds=ids;messageForwardChats=new Set();const chats=data.chats.slice();const rows=chats.map(c=>`<button class="sitem ff-chat" data-chat-id="${c.id}" style="width:100%;text-align:left;border:0;background:transparent;color:var(--text)" onclick="toggleMessageForwardChat(${c.id},this)"><span class="si">💬</span><span style="flex:1;min-width:0"><b>${esc(c.title)}</b><small style="display:block;color:var(--muted)">${c.type==='group'?'Группа':'Личный чат'}</small></span><span class="ff-check">○</span></button>`).join('');sheet(`<div class="grip"></div><h2>Переслать ${ids.length>1?ids.length+' сообщения':'сообщение'}</h2><div class="privacy-note">Можно выбрать несколько чатов. Сообщения сохранят порядок.</div><div class="ff-list">${rows||'<div class="privacy-note">Нет других чатов</div>'}</div><div class="ff-footer"><span id="mfCount">Не выбрано</span><button class="btn pri" id="mfSend" disabled onclick="confirmMessageForward()">Переслать</button></div>`)}
 function toggleMessageForwardChat(id,el){if(messageForwardChats.has(id))messageForwardChats.delete(id);else messageForwardChats.add(id);el.classList.toggle('selected',messageForwardChats.has(id));el.querySelector('.ff-check').textContent=messageForwardChats.has(id)?'✓':'○';document.getElementById('mfCount').textContent=messageForwardChats.size?`Выбрано: ${messageForwardChats.size}`:'Не выбрано';document.getElementById('mfSend').disabled=!messageForwardChats.size}
-function confirmMessageForward(){let sent=0;for(const cid of messageForwardChats){const dest=data.chats.find(c=>c.id===cid);if(!dest)continue;for(const id of messageForwardIds){const src=findMsgInChat(currentChat,id);if(!src)continue;dest.messages.push({id:Date.now()+Math.random(),author:data.me.name,text:src.text||'',createdAt:Date.now(),out:true,reactions:{},reactionsBy:{},replies:[],image:src.image?{...src.image}:null,audio:src.audio?{...src.audio}:null,sharedPost:src.sharedPost?{...src.sharedPost}:null,forwarded:true,forwardAuthor:src.author});dest.createdAt=Date.now()}sent++}save();closeSheet();cancelMultiSelect();toast(`Переслано в чатов: ${sent}`);haptic()}
+function confirmMessageForward(){let sent=0;for(const cid of messageForwardChats){const dest=data.chats.find(c=>c.id===cid);if(!dest)continue;for(const id of messageForwardIds){const src=findMsgInChat(currentChat,id);if(!src)continue;dest.messages.push({id:nextChatMessageId(dest),author:data.me.name,text:src.text||'',createdAt:Date.now(),out:true,reactions:{},reactionsBy:{},replies:[],image:src.image?{...src.image}:null,audio:src.audio?{...src.audio}:null,sharedPost:src.sharedPost?{...src.sharedPost}:null,forwarded:true,forwardAuthor:src.author});dest.createdAt=Date.now()}sent++}save();closeSheet();cancelMultiSelect();toast(`Переслано в чатов: ${sent}`);haptic()}
 function beginQuoteSelection(id){quoteSelectMessageId=Number(id);document.getElementById('messages')?.classList.add('quote-selecting');toast('Выдели нужный фрагмент текста пальцем');}
 document.addEventListener('selectionchange',()=>{if(!quoteSelectMessageId)return;const sel=String(window.getSelection()?.toString()||'').trim();if(!sel)return;const el=document.getElementById('msg-'+quoteSelectMessageId);if(!el||!el.contains(window.getSelection().anchorNode))return;const msg=findMsgInChat(currentChat,quoteSelectMessageId);if(!msg)return;replyTo={id:quoteSelectMessageId,quote:sel.slice(0,500)};document.getElementById('chatRbAuthor').textContent='ответ на фрагмент · '+msg.author;document.getElementById('chatRbText').textContent='«'+replyTo.quote+'»';document.getElementById('chatReplyBanner').classList.add('on');document.getElementById('messages').classList.remove('quote-selecting');quoteSelectMessageId=null;window.getSelection()?.removeAllRanges();document.getElementById('msgInput')?.focus()});
 function setChatMuteUntil(id,type,ms){const c=(type==='chat'?data.chats:data.channels).find(x=>x.id===id);if(!c)return;c.muteUntil=ms?Date.now()+ms:0;save();closeSheet();toast(ms?'Пауза уведомлений включена':'Пауза снята')}
@@ -2951,7 +2972,7 @@ window.openPollCreator=function(){if(!currentChat){toast('Открой чат');
 window.sendPoll=function(){const q=$('#pollQ').value.trim(),o=[...document.querySelectorAll('.pollO')].map(i=>i.value.trim()).filter(Boolean);
  if(!q||o.length<2){toast('Нужен вопрос и минимум 2 варианта');return}
  const num=['1️⃣','2️⃣','3️⃣','4️⃣'];const text=`📊 ${q}\n`+o.map((x,i)=>`${num[i]} ${x}`).join('\n')+'\nГолосуй реакцией';
- currentChat.messages.push({id:Date.now(),author:data.me.name,text,createdAt:Date.now(),out:true,reactions:{},reactionsBy:{},replies:[],image:null,audio:null,replyToId:null});
+ currentChat.messages.push({id:nextChatMessageId(currentChat),author:data.me.name,text,createdAt:Date.now(),out:true,reactions:{},reactionsBy:{},replies:[],image:null,audio:null,replyToId:null});
  currentChat.createdAt=Date.now();save();closeSheet();renderMessages(currentChat.lastReadTs);scrollToBottom();toast('Опрос отправлен')};
 /* переводчик */
 let tPair='ru|en';
@@ -3048,7 +3069,7 @@ window.toggleFeedForwardChat=function(id,el){if(feedForwardSelected.has(id))feed
 window.confirmFeedForward=function(){if(!feedForwardTarget||!feedForwardSelected.size)return;const t=feedForwardTarget;let sent=0;[...feedForwardSelected].forEach(cid=>{if(sendFeedPostToChat(cid,t.channel.id,t.id,true))sent++});feedForwardTarget=null;feedForwardSelected.clear();closeSheet();toast(sent===1?'Публикация переслана':'Публикация переслана в '+sent+' чата');haptic()};
 window.sendFeedPostToChat=function(cid,channelId,postId,silent=false){
  const c=data.chats.find(x=>x.id===cid),ch=data.channels.find(x=>x.id===channelId),post=ch&&ch.posts.find(x=>x.id===postId);if(!c||!ch||!post)return false;
- const msg={id:Date.now()+Math.floor(Math.random()*1000),author:data.me.name,text:'Пересланная публикация',createdAt:Date.now(),out:true,reactions:{},reactionsBy:{},replies:[],sharedPost:{channelId:ch.id,channelTitle:ch.title,postId:post.id,title:post.title||'',text:post.text||'',author:post.author||ch.author||'',image:post.image?.src||null}};
+ const msg={id:nextChatMessageId(currentChat),author:data.me.name,text:'Пересланная публикация',createdAt:Date.now(),out:true,reactions:{},reactionsBy:{},replies:[],sharedPost:{channelId:ch.id,channelTitle:ch.title,postId:post.id,title:post.title||'',text:post.text||'',author:post.author||ch.author||'',image:post.image?.src||null}};
  c.messages.push(msg);c.createdAt=Date.now();save();if(!silent){closeSheet();toast('Публикация переслана в «'+(c.title||'чат')+'»');haptic()}
  if(currentChat&&currentChat.id===c.id&&document.getElementById('screen-chat')?.classList.contains('on')){renderMessages(currentChat.lastReadTs);scrollToBottom()}return true
 };
