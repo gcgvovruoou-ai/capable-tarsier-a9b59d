@@ -1554,13 +1554,15 @@ document.addEventListener('touchmove',()=>{chatMoved=true},{passive:true});
 // ДЕЙСТВИЯ
 function openItemActions(id,type){
   const list=type==='chat'?data.chats:data.channels;
-  const c=list.find(x=>x.id===id);if(!c)return;
+  const c=list.find(x=>String(x.id)===String(id));if(!c)return;
+  const idArg=JSON.stringify(c.id);
   const name=type==='chat'?c.title:(c.mode==='admin_only'?c.title:redditName(c.title));
   const nl=c.notifications==='none'?'выключены':c.notifications==='mentions'?'упоминания':'все';
+  const openAction=type==='chat'?'openChatSafe':'openChannel';
   sheet(`<div class="grip"></div><h2>${esc(name)}</h2>
-    <div class="sitem" onclick="closeSheet();${type==='chat'?'openChat':'openChannel'}(${id})"><span class="si">→</span>Открыть</div>
-    <div class="sitem" onclick="closeSheet();openNotif(${id},'${type}')"><span class="si">🔔</span><span class="slabel">Уведомления</span><span class="sval">${nl}</span></div>
-    <div class="sitem danger" onclick="closeSheet();confirmDelete(${id},'${type}')"><span class="si">×</span>Удалить</div>
+    <div class="sitem" onclick="closeSheet();${openAction}(${idArg})"><span class="si">→</span>Открыть</div>
+    <div class="sitem" onclick="closeSheet();openNotif(${idArg},'${type}')"><span class="si">🔔</span><span class="slabel">Уведомления</span><span class="sval">${nl}</span></div>
+    <div class="sitem danger" onclick="closeSheet();confirmDelete(${idArg},'${type}')"><span class="si">×</span>Удалить</div>
     <div class="actions"><button class="btn sec" onclick="closeSheet()">Отмена</button></div>`);
 }
 function openNotif(id,type){
