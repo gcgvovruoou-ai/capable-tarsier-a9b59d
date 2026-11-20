@@ -1113,20 +1113,20 @@ html,body{background:var(--bg)}.app{isolation:isolate}
   <div class="topbar">
     <div class="logo" onclick="logoClick()">tread<span class="logo-dot" id="logoDot"></span></div>
     <div class="topbar-space"></div>
-    <button class="iconbtn" onclick="openSearch()">🔍</button>
+    <button class="iconbtn" onclick="openSearch()" aria-label="Поиск"><svg class="tread-ui-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></button>
   </div>
   <div class="tabs">
-    <button class="tab on" id="tab-chats" onclick="setTab('chats')">💬 Чаты</button>
+    <button class="tab on" id="tab-chats" onclick="setTab('chats')"><svg class="tread-ui-icon" viewBox="0 0 24 24"><path d="M20.5 11.5a8.5 8.5 0 0 1-8.5 8.5 9 9 0 0 1-4-.9L3 20l.9-4.1a9 9 0 0 1-.9-4.4A8.5 8.5 0 0 1 11.5 3h.5a8.5 8.5 0 0 1 8.5 8.5Z"/></svg>Чаты</button>
     <button class="tab" id="tab-channels" onclick="setTab('channels')">▤ Лента</button>
-    <button class="tab" id="tab-mods" onclick="setTab('mods')">🧩 Моды</button>
+    <button class="tab" id="tab-mods" onclick="setTab('mods')"><svg class="tread-ui-icon" viewBox="0 0 24 24"><path d="M8 4a2 2 0 1 1 4 0v2h4a2 2 0 0 1 2 2v3h2a2 2 0 1 1 0 4h-2v3a2 2 0 0 1-2 2h-4v-2a2 2 0 1 0-4 0v2H6a2 2 0 0 1-2-2v-4h2a2 2 0 1 0 0-4H4V8a2 2 0 0 1 2-2h2Z"/></svg>Моды</button>
   </div>
   <div class="list-wrap" id="itemList"></div>
   <button class="create-bar on" id="createBar" onclick="openCreate()">＋ Новый чат</button>
   <nav class="bottom-nav" id="bottomNav" aria-label="Основная навигация">
-    <button class="bottom-nav-item active" id="nav-chats" onclick="setTab('chats')" aria-label="Чаты"><span class="bottom-nav-icon">▣</span><span>Чаты</span></button>
-    <button class="bottom-nav-item" id="nav-channels" onclick="setTab('channels')" aria-label="Лента"><span class="bottom-nav-icon">◫</span><span>Лента</span></button>
-    <button class="bottom-nav-item" id="nav-mods" onclick="setTab('mods')" aria-label="Плагины"><span class="bottom-nav-icon">🧩</span><span>Плагины</span></button>
-    <button class="bottom-nav-item" id="nav-profile" onclick="openMyProfile()" aria-label="Профиль"><span class="bottom-nav-icon">◉</span><span>Профиль</span></button>
+    <button class="bottom-nav-item active" id="nav-chats" onclick="setTab('chats')" aria-label="Чаты"><span class="bottom-nav-icon"><svg class="tread-ui-icon" viewBox="0 0 24 24"><path d="M20.5 11.5a8.5 8.5 0 0 1-8.5 8.5 9 9 0 0 1-4-.9L3 20l.9-4.1a9 9 0 0 1-.9-4.4A8.5 8.5 0 0 1 11.5 3h.5a8.5 8.5 0 0 1 8.5 8.5Z"/></svg></span><span>Чаты</span></button>
+    <button class="bottom-nav-item" id="nav-channels" onclick="setTab('channels')" aria-label="Лента"><span class="bottom-nav-icon"><svg class="tread-ui-icon" viewBox="0 0 24 24"><path d="M4 5h16M4 10h16M4 15h10M4 20h10"/></svg></span><span>Лента</span></button>
+    <button class="bottom-nav-item" id="nav-mods" onclick="setTab('mods')" aria-label="Плагины"><span class="bottom-nav-icon"><svg class="tread-ui-icon" viewBox="0 0 24 24"><path d="M8 4a2 2 0 1 1 4 0v2h4a2 2 0 0 1 2 2v3h2a2 2 0 1 1 0 4h-2v3a2 2 0 0 1-2 2h-4v-2a2 2 0 1 0-4 0v2H6a2 2 0 0 1-2-2v-4h2a2 2 0 1 0 0-4H4V8a2 2 0 0 1 2-2h2Z"/></svg></span><span>Плагины</span></button>
+    <button class="bottom-nav-item" id="nav-profile" onclick="openMyProfile()" aria-label="Профиль"><span class="bottom-nav-icon"><svg class="tread-ui-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span><span>Профиль</span></button>
   </nav>
 </div>
 
