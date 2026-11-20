@@ -4204,8 +4204,14 @@ if(window.treadSupabaseReady()){
   const chat=currentChat,sb=client(),input=document.getElementById('msgInput'),body=input?.value?.trim()||'';
   if(chat?._remoteConversationId&&sb){
    if(pendingImage?.value||pendingAudio?.value){notify('В синхронизированных чатах пока доступны текстовые сообщения и ответы.');return;}
-   if(!body)return;let replyId=null;if(replyTo){const target=findMsgInChat(chat,replyTo.id);replyId=target?._remoteId||null;}
-   const {error}=await sb.from('messages').insert({conversation_id:chat._remoteConversationId,sender_id:window.treadCurrentUser.id,body,reply_to_id:replyId});
+   if(!body)return;
+   const {data:{user},error:authError}=await sb.auth.getUser();
+   if(authError||!user){notify('Сессия входа истекла. Перезайди в аккаунт и повтори отправку.');return;}
+   const {data:membership,error:membershipError}=await sb.from('conversation_members').select('conversation_id').eq('conversation_id',chat._remoteConversationId).eq('user_id',user.id).maybeSingle();
+   if(membershipError){notify('Не удалось проверить доступ к чату: '+membershipError.message);return;}
+   if(!membership){notify('Нет доступа к этой переписке. Обнови список чатов и открой нужный чат заново.');return;}
+   let replyId=null;if(replyTo){const target=findMsgInChat(chat,replyTo.id);replyId=target?._remoteId||null;}
+   const {error}=await sb.from('messages').insert({conversation_id:chat._remoteConversationId,sender_id:user.id,body,reply_to_id:replyId});
    if(error){notify('Сообщение не отправлено: '+error.message);return;}
    if(input){input.value='';input.style.height='auto';}cancelChatReply();clearPendingImage();pendingAudio.value=null;await refreshMessages(chat);scrollToBottom();return;
   }
