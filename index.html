@@ -4877,7 +4877,7 @@ if(window.treadSupabaseReady()){
   currentChat.createdAt=Date.now();
   await window.treadWalletSync();
   closeSheet();renderMessages(currentChat.lastReadTs);scrollToBottom();
-  if(typeof window.giftEventBurst==='function')requestAnimationFrame(()=>window.giftEventBurst(remoteId));
+  if(typeof window.giftEventBurst==='function')requestAnimationFrame(()=>window.giftEventBurst(localId));
   if(typeof renderMyProfile==='function')renderMyProfile();
   toast('Подарок передан. Получатель увидит его в чате и инвентаре.');
  };
