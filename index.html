@@ -4199,10 +4199,10 @@ if(window.treadSupabaseReady()){
  const notify=t=>typeof toast==='function'?toast(t):console.info(t);
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const idFromUuid=v=>Number.parseInt(String(v||'').replace(/-/g,'').slice(0,12),16)||Date.now();
- const remoteToLocal=(r,p)=>({id:idFromUuid(r.id),_remoteId:r.id,_remoteConversationId:r.conversation_id,author:p?.display_name||p?.username||'Пользователь',text:r.body||'',createdAt:new Date(r.created_at).getTime(),out:r.sender_id===window.treadCurrentUser?.id,reactions:{},reactionsBy:{},replies:[],replyToId:r.reply_to_id?idFromUuid(r.reply_to_id):null});
+ const remoteToLocal=(r,p)=>({id:idFromUuid(r.id),_remoteId:r.id,_remoteConversationId:r.conversation_id,author:p?.display_name||p?.username||'Пользователь',text:r.body||'',gift:r.gift||null,createdAt:new Date(r.created_at).getTime(),out:r.sender_id===window.treadCurrentUser?.id,reactions:{},reactionsBy:{},replies:[],replyToId:r.reply_to_id?idFromUuid(r.reply_to_id):null});
  async function refreshMessages(chat=currentChat){
   const sb=client();if(!sb||!chat?._remoteConversationId)return;
-  const {data:rows,error}=await sb.from('messages').select('id,conversation_id,sender_id,body,created_at,reply_to_id').eq('conversation_id',chat._remoteConversationId).order('created_at',{ascending:true}).limit(500);
+  const {data:rows,error}=await sb.from('messages').select('id,conversation_id,sender_id,body,gift,created_at,reply_to_id').eq('conversation_id',chat._remoteConversationId).order('created_at',{ascending:true}).limit(500);
   if(error){console.error(error);notify('Не удалось загрузить сообщения: '+error.message);return false;}
   const mids=(rows||[]).map(x=>x.id);let reactions=[];
   if(mids.length){const rr=await sb.from('message_reactions').select('message_id,user_id,emoji').in('message_id',mids);if(rr.error){notify('Не удалось загрузить реакции: '+rr.error.message);return false;}reactions=rr.data||[];}
@@ -4762,7 +4762,7 @@ if(window.treadSupabaseReady()){
   ensureElix();const history=data.wallet.history.slice(-10).reverse();
   const rows=history.length?history.map(x=>'<div class="setting-row"><span class="ic">'+(x.type==='sent'?'↗':'✦')+'</span><span class="settings-nav-copy"><span class="lbl">'+escHtml(x.label||'Операция')+'</span><small>'+new Date(x.at).toLocaleString('ru')+'</small></span><b>'+(x.type==='sent'?'−':'+')+formatElix(x.amount)+'</b></div>').join(''):'<div class="privacy-note">Операций пока нет.</div>';
   const inv=data.wallet.inventory;
-  const body=tab==='shop'?'<div class="nft-grid">'+ELIX_GIFTS.map(g=>card(g,'shop')).join('')+'</div>':
+  const body=tab==='shop'?'<div class="nft-grid">'+(window.treadGiftCatalog?.length?window.treadGiftCatalog:ELIX_GIFTS).map(g=>card(g,'shop')).join('')+'</div>':
    tab==='collection'?(inv.length?'<div class="nft-grid">'+inv.map(g=>card(g,'inv')).join('')+'</div>':'<div class="privacy-note">Коллекция пока пуста. Загляни в магазин подарков.</div>')+'<div class="privacy-note">После покупки подарок нельзя продать 24 часа. Передаривание доступно сразу; таймер продажи начинается заново.</div>':
    '<div class="profile-section-title">История операций</div>'+rows+'<div class="privacy-note">Продажа подарков облагается комиссией '+ELIX_SELL_FEE+'%. Это локальный тест: реальные платежи пока не подключены.</div>';
   sheet('<div class="grip"></div><div style="text-align:center;padding:12px 0 15px"><div class="elix-gem" style="margin:auto;width:58px;height:58px;font-size:32px">✦</div><div class="elix-bal '+(data.wallet.unlimitedOwner?'inf':'')+'" id="elixBal">'+(data.wallet.unlimitedOwner?'∞':'')+'</div><div style="color:var(--muted)">эликсов</div><div style="font-size:12px;color:var(--muted);margin-top:8px">'+(data.wallet.unlimitedOwner?'Для владельца действует бесконечный баланс':'Внутренняя валюта tread.')+'</div></div><div class="elix-shop-tabs"><button class="'+(tab==='wallet'?'active':'')+'" onclick="openElixWallet(\'wallet\')">Кошелёк</button><button class="'+(tab==='shop'?'active':'')+'" onclick="openElixWallet(\'shop\')">Магазин</button><button class="'+(tab==='collection'?'active':'')+'" onclick="openElixWallet(\'collection\')">Коллекция</button></div>'+body);
@@ -4778,6 +4778,129 @@ if(window.treadSupabaseReady()){
   const nft='<div class="nft-gift nft-message" data-rarity="'+escHtml(g.rarity||'Обычный')+'" style="--n1:'+colors[0]+';--n2:'+colors[1]+'"><div class="nft-top"><span class="nft-number">#'+serial(g)+'</span><span class="nft-edition">AUTHENTIC GIFT</span></div><div class="nft-model">'+art(g)+'</div><div class="nft-bottom"><div class="nft-title">'+escHtml(g.name)+'</div><div class="nft-rarity">tread. collectible</div></div></div>';
   return html.replace(/<span class="elix-star">[\s\S]*?<\/span>/,nft);
  };
+
+ const localEnsureElix=window.ensureElix;
+ const walletState={loaded:false,promise:null};
+ window.treadGiftCatalog=[];
+ const applyWalletSnapshot=payload=>{
+  if(!payload)throw new Error('Пустой ответ сервера кошелька');
+  data.wallet={
+   balance:Number(payload.balance||0),
+   unlimitedOwner:!!payload.unlimited_owner,
+   inventory:Array.isArray(payload.inventory)?payload.inventory:[],
+   history:Array.isArray(payload.history)?payload.history:[],
+   giftCounters:payload.gift_counters&&typeof payload.gift_counters==='object'?payload.gift_counters:{}
+  };
+  window.treadGiftCatalog=Array.isArray(payload.catalog)?payload.catalog:[];
+  walletState.loaded=true;
+  save();
+  return data.wallet;
+ };
+ window.ensureElix=function(){
+  if(window.treadCurrentUser){
+   if(!data.wallet)data.wallet={balance:0,history:[],inventory:[],giftCounters:{},unlimitedOwner:false};
+   if(!Array.isArray(data.wallet.history))data.wallet.history=[];
+   if(!Array.isArray(data.wallet.inventory))data.wallet.inventory=[];
+   data.wallet.unlimitedOwner=walletState.loaded?!!data.wallet.unlimitedOwner:false;
+   return;
+  }
+  if(typeof localEnsureElix==='function')localEnsureElix();
+ };
+ window.treadWalletSync=async function(){
+  if(!window.treadCurrentUser||!window.treadSupabaseReady())return false;
+  if(walletState.promise)return walletState.promise;
+  walletState.promise=(async()=>{
+   const {data:payload,error}=await window.treadSupabase.rpc('tread_wallet_snapshot');
+   if(error)throw error;
+   applyWalletSnapshot(payload);
+   return true;
+  })();
+  try{return await walletState.promise}finally{walletState.promise=null}
+ };
+ const requireWallet=async()=>{
+  if(!window.treadCurrentUser){toast('Войди в аккаунт, чтобы использовать серверный кошелёк');return false}
+  try{await window.treadWalletSync();return true}
+  catch(e){console.error('tread wallet sync',e);toast('Не удалось загрузить кошелёк: '+(e?.message||e));return false}
+ };
+ const localOpenWallet=window.openElixWallet;
+ window.openElixWallet=async function(tab='wallet'){
+  if(!await requireWallet())return;
+  return localOpenWallet(tab);
+ };
+ const localOpenProfileGifts=window.openProfileGifts;
+ window.openProfileGifts=async function(){
+  if(!await requireWallet())return;
+  return localOpenProfileGifts();
+ };
+ window.buyElixGift=async function(id){
+  if(!await requireWallet())return;
+  const {data:payload,error}=await window.treadSupabase.rpc('tread_buy_gift',{p_gift_id:String(id)});
+  if(error){toast(error.message?.includes('INSUFFICIENT_ELIX')?'Недостаточно эликсов':'Покупка не выполнена: '+error.message);return}
+  applyWalletSnapshot(payload);
+  toast('Подарок добавлен в серверную коллекцию');
+  return window.openElixWallet('collection');
+ };
+ window.sellElixGift=async function(uid){
+  if(!await requireWallet())return;
+  const {data:payload,error}=await window.treadSupabase.rpc('tread_sell_gift',{p_uid:uid});
+  if(error){toast(error.message?.includes('SELL_LOCK_ACTIVE')?'Срок запрета продажи ещё не закончился':'Продажа не выполнена: '+error.message);return}
+  applyWalletSnapshot(payload);
+  toast('Подарок продан. Баланс обновлён на сервере.');
+  return window.openElixWallet('collection');
+ };
+ window.toggleProfileGift=async function(uid){
+  if(!await requireWallet())return;
+  const {error}=await window.treadSupabase.rpc('tread_toggle_gift_display',{p_uid:uid});
+  if(error){toast('Не удалось изменить показ подарка: '+error.message);return}
+  await window.treadWalletSync();
+  window.openElixWallet('collection');
+  if(typeof renderMyProfile==='function')renderMyProfile();
+ };
+ window.sendCollectibleGift=async function(uid){
+  if(!await requireWallet())return;
+  if(!currentChat||currentChat.type==='group'||!currentChat._remoteConversationId){
+   toast('Для передачи подарка нужен открытый личный чат с серверной синхронизацией');return;
+  }
+  const {data:result,error}=await window.treadSupabase.rpc('tread_transfer_gift',{
+   p_uid:uid,p_conversation_id:currentChat._remoteConversationId
+  });
+  if(error){toast('Не удалось передать подарок: '+error.message);return}
+  const gift=result?.gift;
+  if(!gift?.itemName){toast('Сервер не вернул данные подарка');return}
+  const remoteId=String(result.message_id||'');
+  const localId=Number.parseInt(remoteId.replace(/-/g,'').slice(0,12),16)||Date.now();
+  currentChat.messages.push({
+   id:localId,_remoteId:remoteId,_remoteConversationId:currentChat._remoteConversationId,
+   author:data.me.name,text:'',createdAt:Number(result.created_at)||Date.now(),out:true,
+   reactions:{},reactionsBy:{},replies:[],gift
+  });
+  currentChat.createdAt=Date.now();
+  await window.treadWalletSync();
+  closeSheet();renderMessages(currentChat.lastReadTs);scrollToBottom();
+  if(typeof window.giftEventBurst==='function')requestAnimationFrame(()=>window.giftEventBurst(remoteId));
+  if(typeof renderMyProfile==='function')renderMyProfile();
+  toast('Подарок передан. Получатель увидит его в чате и инвентаре.');
+ };
+ window.openGiftView=function(src,id){
+  ensureElix();
+  const inv=src==='inv';
+  const g=inv?data.wallet.inventory.find(x=>String(x.uid)===String(id)):(window.treadGiftCatalog.find(x=>x.id===id)||ELIX_GIFTS.find(x=>x.id===id));
+  if(!g)return;
+  const modelId=canonical(g),colors=palette[modelId]||['#a5b4fc','#37306b'];
+  const left=inv?Math.max(0,(g.sellAfter||g.boughtAt+ELIX_SELL_LOCK)-Date.now()):0;
+  const serialNo=String(Number(g.no)||1).padStart(4,'0');
+  const title=escHtml(g.name||g.itemName||'Подарок');
+  const artMarkup=art(g);
+  const detail='<div class="nft-gift nft-detail" data-rarity="'+escHtml(g.rarity||'Обычный')+'" style="--n1:'+colors[0]+';--n2:'+colors[1]+'"><div class="nft-top"><span class="nft-number">'+(inv?'#'+serialNo:'ВЫПУСК')+'</span><span class="nft-edition">'+escHtml(g.rarity||'COLLECTIBLE')+'</span></div><div class="nft-model">'+artMarkup+'</div><div class="nft-bottom"><div class="nft-title">'+title+'</div><div class="nft-rarity">tread. digital collectible</div></div></div>';
+  const rows=inv?'<div class="setting-row"><span class="lbl">От кого</span><b>'+escHtml(g.from||'Магазин tread.')+'</b></div><div class="setting-row"><span class="lbl">Получен</span><b>'+new Date(g.boughtAt||Date.now()).toLocaleDateString('ru')+'</b></div>':'';
+  const action=inv?'<button class="btn sec" onclick="sendCollectibleGift(\''+escHtml(g.uid)+'\')" '+(currentChat?'':'disabled')+'>Передарить</button><button class="btn pri" '+(left===0?'':'disabled')+' onclick="sellElixGift(\''+escHtml(g.uid)+'\')">'+(left===0?'Продать · −'+ELIX_SELL_FEE+'%':'Через '+Math.ceil(left/3600000)+' ч')+'</button>':'<button class="btn pri" onclick="buyElixGift(\''+escHtml(g.id)+'\')">Купить · '+formatElix(g.price)+' ✦</button>';
+  sheet('<div class="grip"></div>'+detail+'<div class="tgv-rows">'+rows+'<div class="setting-row"><span class="lbl">Стоимость</span><b>'+formatElix(g.price)+' ✦</b></div></div><div class="actions">'+action+'</div><button class="btn sec" style="width:100%;margin-top:10px" onclick="openElixWallet(\''+(inv?'collection':'shop')+'\')">Назад</button>');
+ };
+ window.addEventListener('tread-auth-changed',event=>{
+  walletState.loaded=false;
+  if(event.detail)window.treadWalletSync().catch(e=>console.warn('Wallet sync after sign-in:',e?.message||e));
+  else{window.treadGiftCatalog=[];if(data.wallet)data.wallet.unlimitedOwner=false;}
+ });
 })();
 </script>
 
