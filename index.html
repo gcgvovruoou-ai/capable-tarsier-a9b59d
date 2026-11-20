@@ -4714,43 +4714,73 @@ if(window.treadSupabaseReady()){
 <script id="tread-nft-gifts-v2">
 (()=>{
  const palette={rose:['#f47b91','#6b183f'],heart:['#c58bff','#452078'],butterfly:['#65d9cb','#155b73'],crown:['#f6ca62','#754015'],star:['#f8dc65','#8d4215'],crystal:['#8ad8ff','#183c83'],pepe:['#8fe09b','#174d36']};
+ const aliases={
+  rose:['rose','golden rose','золотая роза','роза','розу'],
+  heart:['heart','glowing heart','сияющее сердце','сердце'],
+  butterfly:['butterfly','crystal butterfly','кристальная бабочка','бабочка'],
+  crown:['crown','корона'],
+  star:['star','starlight gift','звёздный дар','звездный дар','звезда','звёздный'],
+  crystal:['crystal','moon crystal','лунный кристалл','кристалл','алмаз','diamond'],
+  pepe:['pepe','пепе','лягушка']
+ };
  const escHtml=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- const art=g=>typeof window.treadGiftArt==='function'?window.treadGiftArt(g):'<span>✦</span>';
- const nextNo=g=>String(Number(data.wallet?.giftCounters?.[g.id]||0)+1).padStart(4,'0');
- const serial=g=>String(Number(g.no)||1).padStart(4,'0');
+ const canonical=g=>{
+  const values=[g?.id,g?.itemId,g?.giftId,g?.gift_id,g?.slug,g?.type,g?.name,g?.itemName,g?.item_name]
+   .filter(v=>v!==undefined&&v!==null).map(v=>String(v).toLowerCase().replace(/[_-]+/g,' ').trim());
+  for(const [id,names] of Object.entries(aliases)){
+   if(values.some(v=>names.some(n=>v===n||v.includes(n))))return id;
+  }
+  return '';
+ };
+ const genericArt='<div class="gl-art" role="img" aria-label="Подарок"><svg viewBox="0 0 180 160" aria-hidden="true"><defs><linearGradient id="giftBoxA" x2="1" y2="1"><stop stop-color="#ffe3a1"/><stop offset="1" stop-color="#c78338"/></linearGradient></defs><ellipse cx="90" cy="145" rx="43" ry="7" fill="#000" opacity=".22"/><rect x="43" y="67" width="94" height="70" rx="10" fill="url(#giftBoxA)" stroke="#8e5529" stroke-width="3"/><path d="M90 67v70M43 91h94" stroke="#fff0c7" stroke-width="10"/><path d="M90 67C48 63 50 24 72 30c14 4 18 22 18 37 0-15 7-33 21-37 22-6 24 33-21 37z" fill="#e66c75" stroke="#9d3e50" stroke-width="3"/></svg></div>';
+ const art=g=>{
+  const id=canonical(g);
+  if(id==='pepe')return pepeGiftArt();
+  if(id&&GA[id]&&typeof gart==='function')return gart({...g,id});
+  if(g?.image){
+   const src=escHtml(g.image);
+   return '<img class="gift-render-image" src="'+src+'" alt="'+escHtml(g.name||g.itemName||'Подарок')+'" onerror="this.outerHTML=\''+genericArt.replace(/'/g,"&#39;")+'\'">';
+  }
+  return genericArt;
+ };
+ window.treadGiftModelId=canonical;
+ window.treadGiftArt=art;
+ const serial=g=>String(Number(g.no??g.itemNo??g.item_no)||1).padStart(4,'0');
+ const nextNo=g=>String(Number(data.wallet?.giftCounters?.[canonical(g)||g.id]||0)+1).padStart(4,'0');
  const card=(g,kind,compact=false)=>{
-   const colors=palette[g.id]||['#a5b4fc','#37306b'];
-   const no=kind==='shop'?'ВЫПУСК #'+nextNo(g):'#'+serial(g);
-   return '<div class="nft-gift '+(compact?'nft-compact':'')+'" data-rarity="'+escHtml(g.rarity||'Обычный')+'" style="--n1:'+colors[0]+';--n2:'+colors[1]+'" onclick="openGiftView(\''+(kind==='shop'?'shop':'inv')+'\',\''+escHtml(kind==='shop'?g.id:g.uid)+'\')">'+
-    '<div class="nft-top"><span class="nft-number">'+no+'</span><span class="nft-edition">'+escHtml(g.rarity||'COLLECTIBLE')+'</span></div>'+
-    '<div class="nft-model">'+art(g)+'</div><div class="nft-bottom"><div class="nft-title">'+escHtml(g.name)+'</div><div class="nft-rarity">tread. digital collectible</div><div class="nft-price">✦ '+formatElix(g.price||0)+'</div></div></div>';
+  const id=canonical(g),colors=palette[id]||['#a5b4fc','#37306b'];
+  const no=kind==='shop'?'ВЫПУСК #'+nextNo(g):'#'+serial(g);
+  const key=kind==='shop'?g.id:(g.uid||g.itemUid||g.item_uid);
+  return '<div class="nft-gift '+(compact?'nft-compact':'')+'" data-rarity="'+escHtml(g.rarity||'Обычный')+'" style="--n1:'+colors[0]+';--n2:'+colors[1]+'" onclick="openGiftView(\''+(kind==='shop'?'shop':'inv')+'\',\''+escHtml(key)+'\')">'+
+   '<div class="nft-top"><span class="nft-number">'+no+'</span><span class="nft-edition">'+escHtml(g.rarity||'COLLECTIBLE')+'</span></div>'+
+   '<div class="nft-model">'+art(g)+'</div><div class="nft-bottom"><div class="nft-title">'+escHtml(g.name||g.itemName||'Подарок')+'</div><div class="nft-rarity">tread. digital collectible</div><div class="nft-price">✦ '+formatElix(g.price||0)+'</div></div></div>';
  };
  window.openProfileGifts=function(){
-   ensureElix();const items=data.wallet.inventory.slice().sort((a,b)=>(b.boughtAt||0)-(a.boughtAt||0));
-   const total=items.reduce((sum,g)=>sum+(Number(g.price)||0),0);
-   const html=items.length?'<div class="nft-grid">'+items.map(g=>card(g,'inv',true)).join('')+'</div>':'<div class="gift-collection-empty">Пока подарков нет. Загляни в магазин, чтобы собрать коллекцию.</div>';
-   sheet('<div class="grip"></div><div class="gift-collection-head"><span class="gch-icon">✦</span><div class="gch-copy"><b>Мои NFT-подарки</b><small>'+items.length+' в коллекции · стоимость '+formatElix(total)+' ✦</small></div></div>'+html+'<button class="btn sec gift-collection-shop" onclick="openElixWallet(\'shop\')">Магазин подарков</button>');
-   const sh=document.getElementById('sheet');if(sh)sh.classList.add('gift-collection-sheet');
+  ensureElix();const items=data.wallet.inventory.slice().sort((a,b)=>(b.boughtAt||0)-(a.boughtAt||0));
+  const total=items.reduce((sum,g)=>sum+(Number(g.price)||0),0);
+  const html=items.length?'<div class="nft-grid">'+items.map(g=>card(g,'inv',true)).join('')+'</div>':'<div class="gift-collection-empty">Пока подарков нет. Загляни в магазин, чтобы собрать коллекцию.</div>';
+  sheet('<div class="grip"></div><div class="gift-collection-head"><span class="gch-icon">✦</span><div class="gch-copy"><b>Мои NFT-подарки</b><small>'+items.length+' в коллекции · стоимость '+formatElix(total)+' ✦</small></div></div>'+html+'<button class="btn sec gift-collection-shop" onclick="openElixWallet(\'shop\')">Магазин подарков</button>');
+  const sh=document.getElementById('sheet');if(sh)sh.classList.add('gift-collection-sheet');
  };
  window.openElixWallet=function(tab='wallet'){
-   ensureElix();const history=data.wallet.history.slice(-10).reverse();
-   const rows=history.length?history.map(x=>'<div class="setting-row"><span class="ic">'+(x.type==='sent'?'↗':'✦')+'</span><span class="settings-nav-copy"><span class="lbl">'+escHtml(x.label||'Операция')+'</span><small>'+new Date(x.at).toLocaleString('ru')+'</small></span><b>'+(x.type==='sent'?'−':'+')+formatElix(x.amount)+'</b></div>').join(''):'<div class="privacy-note">Операций пока нет.</div>';
-   const inv=data.wallet.inventory;
-   const body=tab==='shop'?'<div class="nft-grid">'+ELIX_GIFTS.map(g=>card(g,'shop')).join('')+'</div>':
-     tab==='collection'?(inv.length?'<div class="nft-grid">'+inv.map(g=>card(g,'inv')).join('')+'</div>':'<div class="privacy-note">Коллекция пока пуста. Загляни в магазин подарков.</div>')+'<div class="privacy-note">После покупки подарок нельзя продать 24 часа. Передаривание доступно сразу; таймер продажи начинается заново.</div>':
-     '<div class="profile-section-title">История операций</div>'+rows+'<div class="privacy-note">Продажа подарков облагается комиссией '+ELIX_SELL_FEE+'%. Это локальный тест: реальные платежи пока не подключены.</div>';
-   sheet('<div class="grip"></div><div style="text-align:center;padding:12px 0 15px"><div class="elix-gem" style="margin:auto;width:58px;height:58px;font-size:32px">✦</div><div class="elix-bal '+(data.wallet.unlimitedOwner?'inf':'')+'" id="elixBal">'+(data.wallet.unlimitedOwner?'∞':'')+'</div><div style="color:var(--muted)">эликсов</div><div style="font-size:12px;color:var(--muted);margin-top:8px">'+(data.wallet.unlimitedOwner?'Для владельца действует бесконечный баланс':'Внутренняя валюта tread.')+'</div></div><div class="elix-shop-tabs"><button class="'+(tab==='wallet'?'active':'')+'" onclick="openElixWallet(\'wallet\')">Кошелёк</button><button class="'+(tab==='shop'?'active':'')+'" onclick="openElixWallet(\'shop\')">Магазин</button><button class="'+(tab==='collection'?'active':'')+'" onclick="openElixWallet(\'collection\')">Коллекция</button></div>'+body);
-   if(tab==='collection'){const sh=document.getElementById('sheet');if(sh)sh.classList.add('gift-collection-sheet')}
-   if(!data.wallet.unlimitedOwner&&typeof countUp==='function')countUp(document.getElementById('elixBal'),data.wallet.balance);
+  ensureElix();const history=data.wallet.history.slice(-10).reverse();
+  const rows=history.length?history.map(x=>'<div class="setting-row"><span class="ic">'+(x.type==='sent'?'↗':'✦')+'</span><span class="settings-nav-copy"><span class="lbl">'+escHtml(x.label||'Операция')+'</span><small>'+new Date(x.at).toLocaleString('ru')+'</small></span><b>'+(x.type==='sent'?'−':'+')+formatElix(x.amount)+'</b></div>').join(''):'<div class="privacy-note">Операций пока нет.</div>';
+  const inv=data.wallet.inventory;
+  const body=tab==='shop'?'<div class="nft-grid">'+ELIX_GIFTS.map(g=>card(g,'shop')).join('')+'</div>':
+   tab==='collection'?(inv.length?'<div class="nft-grid">'+inv.map(g=>card(g,'inv')).join('')+'</div>':'<div class="privacy-note">Коллекция пока пуста. Загляни в магазин подарков.</div>')+'<div class="privacy-note">После покупки подарок нельзя продать 24 часа. Передаривание доступно сразу; таймер продажи начинается заново.</div>':
+   '<div class="profile-section-title">История операций</div>'+rows+'<div class="privacy-note">Продажа подарков облагается комиссией '+ELIX_SELL_FEE+'%. Это локальный тест: реальные платежи пока не подключены.</div>';
+  sheet('<div class="grip"></div><div style="text-align:center;padding:12px 0 15px"><div class="elix-gem" style="margin:auto;width:58px;height:58px;font-size:32px">✦</div><div class="elix-bal '+(data.wallet.unlimitedOwner?'inf':'')+'" id="elixBal">'+(data.wallet.unlimitedOwner?'∞':'')+'</div><div style="color:var(--muted)">эликсов</div><div style="font-size:12px;color:var(--muted);margin-top:8px">'+(data.wallet.unlimitedOwner?'Для владельца действует бесконечный баланс':'Внутренняя валюта tread.')+'</div></div><div class="elix-shop-tabs"><button class="'+(tab==='wallet'?'active':'')+'" onclick="openElixWallet(\'wallet\')">Кошелёк</button><button class="'+(tab==='shop'?'active':'')+'" onclick="openElixWallet(\'shop\')">Магазин</button><button class="'+(tab==='collection'?'active':'')+'" onclick="openElixWallet(\'collection\')">Коллекция</button></div>'+body);
+  if(tab==='collection'){const sh=document.getElementById('sheet');if(sh)sh.classList.add('gift-collection-sheet')}
+  if(!data.wallet.unlimitedOwner&&typeof countUp==='function')countUp(document.getElementById('elixBal'),data.wallet.balance);
  };
  const previous=window.renderMsg;
  if(typeof previous==='function')window.renderMsg=function(m,index){
-   const html=previous.apply(this,arguments);
-   if(!m?.gift?.itemName)return html;
-   const g={id:m.gift.itemId||'gift',name:m.gift.itemName,icon:m.gift.itemIcon||'✦',image:m.gift.itemImage||null,rarity:m.gift.rarity||'Обычный',no:m.gift.itemNo||1,price:0};
-   const colors=palette[g.id]||['#a5b4fc','#37306b'];
-   const nft='<div class="nft-gift nft-message" data-rarity="'+escHtml(g.rarity)+'" style="--n1:'+colors[0]+';--n2:'+colors[1]+'"><div class="nft-top"><span class="nft-number">#'+serial(g)+'</span><span class="nft-edition">AUTHENTIC GIFT</span></div><div class="nft-model">'+art(g)+'</div><div class="nft-bottom"><div class="nft-title">'+escHtml(g.name)+'</div><div class="nft-rarity">tread. collectible</div></div></div>';
-   return html.replace(/<span class="elix-star">[\s\S]*?<\/span>/,nft);
+  const html=previous.apply(this,arguments);
+  if(!m?.gift?.itemName)return html;
+  const g={id:m.gift.itemId,name:m.gift.itemName,icon:m.gift.itemIcon,image:m.gift.itemImage,rarity:m.gift.rarity,no:m.gift.itemNo,price:0};
+  const colors=palette[canonical(g)]||['#a5b4fc','#37306b'];
+  const nft='<div class="nft-gift nft-message" data-rarity="'+escHtml(g.rarity||'Обычный')+'" style="--n1:'+colors[0]+';--n2:'+colors[1]+'"><div class="nft-top"><span class="nft-number">#'+serial(g)+'</span><span class="nft-edition">AUTHENTIC GIFT</span></div><div class="nft-model">'+art(g)+'</div><div class="nft-bottom"><div class="nft-title">'+escHtml(g.name)+'</div><div class="nft-rarity">tread. collectible</div></div></div>';
+  return html.replace(/<span class="elix-star">[\s\S]*?<\/span>/,nft);
  };
 })();
 </script>
