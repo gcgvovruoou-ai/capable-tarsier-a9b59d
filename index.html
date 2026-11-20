@@ -1886,10 +1886,10 @@ function startChatReply(id,sourceEl){
     const parent=findTopParentByMessage(currentChat,target)||findTopParent(currentChat,id);
     if(!parent)return;
     replyTo={id:target.id,parentId:parent.id,parent};
-    document.getElementById('chatRbAuthor').textContent='ответ на: '+m.author;
-    document.getElementById('chatRbText').textContent=(m.text||'🖼 фото').slice(0,80);
+    document.getElementById('chatRbAuthor').textContent='ответ на: '+(target.author||'сообщение');
+    document.getElementById('chatRbText').textContent=(target.text||(target.image?'🖼 фото':target.audio?'♫ аудио':'сообщение')).slice(0,80);
     document.getElementById('chatReplyBanner').classList.add('on');
-    setTimeout(()=>document.getElementById('msgInput').focus(),100);
+    setTimeout(()=>document.getElementById('msgInput')?.focus(),100);
 }
 function cancelChatReply(){
     replyTo=null;
@@ -4078,8 +4078,13 @@ document.addEventListener('input',e=>{if(e.target&&e.target.id==='searchInput'&&
 if(window.treadSupabaseReady()){
   window.treadSupabase.auth.onAuthStateChange((event,session)=>{
     window.treadCurrentUser=session?.user||null;
+    if(session?.user){
+      const overlay=document.getElementById('treadWelcome');
+      if(overlay)overlay.classList.remove('show');
+      try{localStorage.setItem('tread_welcome_seen','1')}catch(e){}
+    }
     if(session?.user && (event==='SIGNED_IN'||event==='INITIAL_SESSION'||event==='TOKEN_REFRESHED')){
-      // Загружаем профиль именно текущего аккаунта после восстановления сессии.
+      // Скрываем регистрацию сразу при восстановленной сессии; профиль синхронизируем отдельно.
       setTimeout(()=>window.treadOnSignedIn(session.user),0);
     } else if(event==='SIGNED_OUT' || (!session && event==='INITIAL_SESSION')) {
       setTimeout(()=>window.treadResetGuestIdentity(),0);
@@ -4096,7 +4101,23 @@ if(window.treadSupabaseReady()){
  window.treadWelcomeClose=()=>{overlay.classList.remove('show');try{localStorage.setItem('tread_welcome_seen','1')}catch(e){}};
 
  let seen=false;try{seen=localStorage.getItem('tread_welcome_seen')==='1'}catch(e){}
- if(!seen){setTimeout(()=>overlay.classList.add('show'),120)}
+ // Не показываем повторную регистрацию поверх уже восстановленной сессии.
+ (async()=>{
+   let hasSession=!!window.treadCurrentUser;
+   try{
+     if(!hasSession&&window.treadSupabaseReady()){
+       const {data,error}=await window.treadSupabase.auth.getSession();
+       if(!error)hasSession=!!data?.session?.user;
+       if(hasSession)window.treadCurrentUser=data.session.user;
+     }
+   }catch(e){console.warn('Auth session check:',e?.message||e)}
+   if(hasSession){
+     overlay.classList.remove('show');
+     try{localStorage.setItem('tread_welcome_seen','1')}catch(e){}
+     return;
+   }
+   if(!seen&&!window.treadCurrentUser)setTimeout(()=>overlay.classList.add('show'),120);
+ })();
 })();
 </script>
 
