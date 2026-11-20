@@ -4652,7 +4652,7 @@ if(window.treadSupabaseReady()){
   const fallback=()=>{
     const root=document.getElementById('myProfileContent');
     if(!root)return;
-    const me=window.data?.me||{},wallet=window.data?.wallet||{};
+    const appData=typeof data!=='undefined'?data:{};const me=appData.me||{},wallet=appData.wallet||{};
     const safeName=String(me.name||'Профиль').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
     root.innerHTML='<div class="st-wrap"><div class="st-hero"><div class="st-id"><div class="st-nick">'+safeName+'</div><div class="st-handle">Профиль tread.</div></div></div><div class="st-tiles"><button class="st-tile" onclick="openElixWallet()"><b>'+(wallet.unlimitedOwner?'∞':Number(wallet.balance||0).toLocaleString('ru'))+'</b><small>Эликсы</small></button><button class="st-tile" onclick="openProfileGifts()"><b>'+(wallet.inventory||[]).length+'</b><small>Подарки</small></button><button class="st-tile" onclick="openProfileStickerPicker()"><b>✦</b><small>Стикер</small></button></div><div class="privacy-note">Не удалось загрузить часть настроек. Основные разделы профиля доступны выше.</div></div>';
   };
