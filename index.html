@@ -1806,8 +1806,9 @@ function reactionVisual(e){return String(e).startsWith('stk:')?(window.stk?windo
   timer=setTimeout(()=>{
    if(!origin)return;
    suppressContextMenuUntil=Date.now()+900;
-   const id=String(origin.el.dataset.id||'');
-   if(id){haptic(15);window.openMsgActions(id);}
+   const targetEl=origin.el;
+   const id=String(targetEl.dataset.id||'');
+   if(id){haptic(15);window.openMsgActions(id,targetEl);}
    clear();
   },520);
  },{passive:true});
@@ -1822,7 +1823,7 @@ function reactionVisual(e){return String(e).startsWith('stk:')?(window.stk?windo
   if(!el)return;
   e.preventDefault();e.stopPropagation();
   if(Date.now()<suppressContextMenuUntil)return;
-  clear();window.openMsgActions(String(el.dataset.id||''));
+  clear();window.openMsgActions(String(el.dataset.id||''),el);
  },true);
 })();
 window.openMsgActions=openMsgActions;
