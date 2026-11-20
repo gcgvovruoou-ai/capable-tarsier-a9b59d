@@ -1512,7 +1512,7 @@ function renderChatItem(c){
   const time=lastMsg?relTime(lastMsg.createdAt):'';
   const safeTitle=esc(c.title||'Без имени');
   const avatar=(c.title||'?').trim().charAt(0).toUpperCase()||'?';
-  return `<div class="chat-item ${unread?'has-unread':''}" onclick="openChatSafe('${String(c.id)}')" oncontextmenu="event.preventDefault();openItemActionsSafe('${String(c.id)}','chat')" ontouchstart="chatLongStartSafe(event,'${String(c.id)}','chat')" ontouchend="chatLongEnd()">
+  return `<div class="chat-item ${unread?'has-unread':''}" onclick="handleItemClick(event,'${String(c.id)}','chat')" oncontextmenu="event.preventDefault();openItemActionsSafe('${String(c.id)}','chat')" ontouchstart="chatLongStartSafe(event,'${String(c.id)}','chat')" ontouchend="chatLongEnd()">
     <div class="chat-av-wrap ${online?'online':''}" ${isPersonal?`data-presence-chat="${c.id}"`:''}>
       <div class="chat-av" style="background:${hashColor(c.title)}">${esc(avatar)}${unread>0?`<div class="badge">${unread>99?'99+':unread}</div>`:''}</div>
     </div>
@@ -1548,8 +1548,10 @@ function renderChannelItem(c){
   </div>`;
 }
 
-function chatLongStart(e,id,type){chatMoved=false;chatLongT=setTimeout(()=>{if(!chatMoved){haptic(15);openItemActions(id,type)}},500)}
+let suppressItemClickUntil=0;
+function chatLongStart(e,id,type){chatMoved=false;if(chatLongT)clearTimeout(chatLongT);chatLongT=setTimeout(()=>{chatLongT=null;if(!chatMoved){suppressItemClickUntil=Date.now()+900;haptic(15);openItemActions(id,type)}},500)}
 function chatLongEnd(){if(chatLongT){clearTimeout(chatLongT);chatLongT=null}}
+function handleItemClick(e,id,type){if(Date.now()<suppressItemClickUntil){e.preventDefault();e.stopPropagation();suppressItemClickUntil=0;return}if(type==='chat')openChatSafe(id);else openChannel(id)}
 document.addEventListener('touchmove',()=>{chatMoved=true},{passive:true});
 
 // ДЕЙСТВИЯ
@@ -2181,7 +2183,7 @@ function openAttachSheet(target){
   sheet(`<div class="grip"></div><h2>Прикрепить</h2>
     <div class="sitem" onclick="closeSheet();attachByUrl()"><span class="si">${treadIcon('link')}</span><div style="flex:1"><div>По ссылке</div><div style="font-size:11.5px;color:var(--muted);margin-top:2px">Ссылка на картинку</div></div></div>
     <div class="sitem" onclick="closeSheet();attachFromDevice()"><span class="si">${treadIcon('image')}</span><div style="flex:1"><div>Из галереи</div><div style="font-size:11.5px;color:var(--muted);margin-top:2px">Фотография</div></div></div>
-    ${target==='message'?`<div class="sitem" onclick="closeSheet();attachAudioToChat()"><span class="si">♫</span><div style="flex:1"><div>Музыка или аудио</div><div style="font-size:11.5px;color:var(--muted);margin-top:2px">Выбрать файл и отправить в чат</div></div></div>`:''}
+    ${target==='message'?`<div class="sitem" onclick="closeSheet();attachAudioToChat()"><span class="si">${treadIcon('music')}</span><div style="flex:1"><div>Музыка или аудио</div><div style="font-size:11.5px;color:var(--muted);margin-top:2px">Выбрать файл и отправить в чат</div></div></div>`:''}
     ${existing?`<div class="sitem danger" onclick="closeSheet();removeAttachedImage()"><span class="si">×</span>Убрать</div>`:''}
     <div class="actions"><button class="btn sec" onclick="closeSheet()">Отмена</button></div>`);
 }
@@ -2309,7 +2311,7 @@ function openProfileStickerPicker(){
 }
 function selectProfileSticker(value,el){window.pendingProfileSticker=value;document.querySelectorAll('.pst-picker-tile').forEach(x=>x.classList.toggle('selected',x===el));const preview=document.getElementById('pstPickerPreview');if(preview)preview.innerHTML=window.stk(value,76)}
 function saveProfileSticker(){if(window.pendingProfileSticker!==undefined){data.me.profileSticker=window.pendingProfileSticker;delete window.pendingProfileSticker;save();closeSheet();renderMyProfile();toast('Стикер профиля обновлён')}}
-function openMyProfile(){if(typeof window.renderMenu==='function')window.renderMenu();else renderMyProfile();syncBottomNav('profile');openScreen('screen-my-profile')}
+function openMyProfile(){const content=document.getElementById('myProfileContent');try{if(typeof window.renderMenu==='function')window.renderMenu();else renderMyProfile()}catch(err){console.error('Profile menu render failed:',err);try{renderMyProfile()}catch(fallbackErr){console.error('Legacy profile render failed:',fallbackErr);if(content)content.innerHTML='<div class="empty"><div class="empty-title">Не удалось загрузить профиль</div><button class="btn sec" onclick="openMyProfile()">Повторить</button></div>'}}syncBottomNav('profile');openScreen('screen-my-profile')}
 function closeMyProfile(){closeScreen();syncBottomNav(currentTab)}
 function randomUserHandle(name){
   const words=['bright','silver','quiet','wild','swift','blue','happy','urban','lucky','cosmic','fresh','golden'];
