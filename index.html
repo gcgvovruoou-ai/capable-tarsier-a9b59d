@@ -4307,25 +4307,27 @@ if(window.treadSupabaseReady()){
   if(type!=='chat')return oldDoDelete.apply(this,arguments);
   const chat=data.chats.find(c=>String(c.id)===String(id));
   if(chat?._remoteConversationId){
-   const sb=client(),uid=window.treadCurrentUser?.id;
-   if(!sb||!uid){notify('Войди в аккаунт, чтобы удалить синхронизированный чат.');return;}
+   const sb=client();
+   if(!sb){notify('Сессия не найдена. Обнови страницу и войди в аккаунт.');return;}
    try{
-    const {data:members,error:membersError}=await sb.from('conversation_members').select('user_id').eq('conversation_id',chat._remoteConversationId);
-    if(membersError)throw membersError;
-    const peerIds=[...new Set((members||[]).map(m=>m.user_id).filter(x=>x&&x!==uid))];
-    // Удаляем дубли только для личной переписки с теми же двумя участниками.
-    // Группы и другие общие чаты не должны попадать в список дубликатов.
+    const {data:authData,error:authError}=await sb.auth.getUser();
+    const user=authData?.user;
+    if(authError||!user){notify('Сессия входа истекла. Перезайди в аккаунт.');return;}
+    const uid=user.id;window.treadCurrentUser=user;
+    // Чтение участников нужно только для уведомления; оно не должно блокировать удаление.
+    let peerIds=[];
+    const memberResult=await sb.from('conversation_members').select('user_id').eq('conversation_id',chat._remoteConversationId);
+    if(!memberResult.error)peerIds=[...new Set((memberResult.data||[]).map(m=>m.user_id).filter(x=>x&&x!==uid))];
     const conversationIds=new Set([chat._remoteConversationId]);
     const isDirect=chat.type==='direct'||chat.type==='personal';
     if(isDirect&&peerIds.length===1){
-     const duplicates=await findDirectPairConversationIds(sb,uid,peerIds[0]);
-     for(const conversationId of duplicates)conversationIds.add(conversationId);
+     try{for(const conversationId of await findDirectPairConversationIds(sb,uid,peerIds[0]))conversationIds.add(conversationId)}
+     catch(e){console.warn('Could not enumerate duplicate conversations:',e?.message||e)}
     }
     for(const conversationId of conversationIds){
      const {data:deleted,error}=await sb.rpc('delete_conversation_for_all',{p_conversation_id:conversationId});
      if(error)throw error;
-     if(deleted!==true)throw new Error('Сервер не подтвердил удаление одной из переписок');
-     await notifyPeerConversationDeleted(sb,peerIds,conversationId);
+     if(deleted!==true)throw new Error('Сервер не подтвердил удаление переписки');
     }
     data.chats=data.chats.filter(c=>c!==chat&&!conversationIds.has(c._remoteConversationId));
     if(currentChat===chat){
@@ -4334,45 +4336,12 @@ if(window.treadSupabaseReady()){
      document.getElementById('screen-chat')?.classList.remove('on');
      document.getElementById('screen-list')?.classList.add('on');
     }
-    save();closeSheet();renderList();haptic(20);notify('Переписка и её серверные дубли удалены у обоих участников');return;
+    save();closeSheet();renderList();haptic(20);notify('Переписка удалена у обоих участников');
+    for(const conversationId of conversationIds)notifyPeerConversationDeleted(sb,peerIds,conversationId).catch(e=>console.warn('Delete notification:',e));
+    return;
    }catch(e){console.error('tread delete conversation for all',e);notify('Не удалось удалить переписку: '+(e?.message||String(e)));return;}
   }
-  // Старые личные чаты могли хранить имя собеседника (peer/title), но не UUID.
-  // Ищем точное совпадение с профилем и удаляем ВСЕ серверные дубли этой пары.
-  if(chat&&window.treadCurrentUser?.id){
-   const sb=client(),uid=window.treadCurrentUser.id;
-   try{
-    const labels=[chat.peer,chat.title].filter(v=>typeof v==='string'&&v.trim()).map(v=>v.trim().toLocaleLowerCase());
-    if(sb&&labels.length){
-     const {data:profiles,error:profileError}=await sb.from('profiles').select('id,display_name,username');
-     if(profileError)throw profileError;
-     const matches=(profiles||[]).filter(p=>p.id!==uid&&[p.display_name,p.username].some(v=>v&&labels.includes(String(v).trim().toLocaleLowerCase())));
-     if(matches.length===1){
-      const peerId=matches[0].id;
-      const peerConversations=await findDirectPairConversationIds(sb,uid,peerId);
-      if(peerConversations.length){
-        for(const conversationId of peerConversations){
-         const {data:deleted,error}=await sb.rpc('delete_conversation_for_all',{p_conversation_id:conversationId});
-         if(error)throw error;
-         if(deleted!==true)throw new Error('Сервер не подтвердил удаление одной из переписок');
-         await notifyPeerConversationDeleted(sb,[peerId],conversationId);
-        }
-        const deletedIds=new Set(peerConversations);
-        data.chats=data.chats.filter(c=>c!==chat&&!deletedIds.has(c._remoteConversationId));
-        if(currentChat===chat){
-         currentChat=null;
-         if(presenceChannel){try{await sb.removeChannel(presenceChannel)}catch(e){}presenceChannel=null;}
-         document.getElementById('screen-chat')?.classList.remove('on');
-         document.getElementById('screen-list')?.classList.add('on');
-        }
-        save();closeSheet();renderList();haptic(20);notify('Старый онлайн-чат и все его серверные сообщения удалены у обоих участников');return;
-       }
-     }else if(matches.length>1){
-      notify('Не удалил: имя собеседника совпадает с несколькими профилями.');return;
-     }
-    }
-   }catch(e){console.error('tread legacy online delete',e);notify('Не удалось удалить старую онлайн-переписку: '+(e?.message||String(e)));return;}
-  }
+  // Чат без серверного UUID является локальным: удаляем только его запись.
   // Если серверной переписки для старого чата нет, удаляем локальную историю.
   const legacyChat=data.chats.find(c=>String(c.id)===String(id));
   if(legacyChat){
