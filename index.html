@@ -4764,5 +4764,37 @@ if(window.treadSupabaseReady()){
   };
 })();
 </script>
+<script id="tread-profile-navigation-hotfix">
+(()=>{
+  window.openMyProfile=function(){
+    const target=document.getElementById('screen-my-profile');
+    if(!target){console.error('[tread] screen-my-profile not found');return}
+    // Switch screens first: a rendering error must never swallow the navigation tap.
+    document.querySelectorAll('.screen').forEach(el=>el.classList.remove('on'));
+    target.classList.add('on');
+    target.classList.remove('settings-page-open');
+    if(Array.isArray(window.viewStack)){
+      window.viewStack.push('screen-my-profile');
+    }
+    try{
+      if(typeof window.syncBottomNav==='function')window.syncBottomNav('profile');
+      if(typeof window.renderMyProfile==='function')window.renderMyProfile();
+      else if(typeof window.renderMenu==='function')window.renderMenu();
+    }catch(error){
+      console.error('[tread] profile renderer failed after opening screen:',error);
+      const content=document.getElementById('myProfileContent');
+      if(content&&!content.innerHTML.trim())content.innerHTML='<div class="privacy-note">Профиль открыт, но часть данных не загрузилась. Обнови экран позже.</div>';
+    }
+    try{if(typeof window.haptic==='function')window.haptic()}catch(_){}
+  };
+  document.addEventListener('click',event=>{
+    const button=event.target.closest('#nav-profile');
+    if(!button)return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    window.openMyProfile();
+  },true);
+})();
+</script>
 </body>
 </html>
