@@ -4442,21 +4442,21 @@ if(window.treadSupabaseReady()){
 
 
 <style id="tread-keyboard-chat-fix">
-#screen-chat{--tread-vv-top:0px;--tread-vv-height:100%;--tread-kb:0px}
-#screen-chat.keyboard-open{top:var(--tread-vv-top)!important;bottom:auto!important;height:var(--tread-vv-height)!important}
-#screen-chat .input-area{bottom:0!important;padding-bottom:max(8px,env(safe-area-inset-bottom))}
+:root{--tread-vv-top:0px;--tread-vv-height:100%;--tread-kb:0px}
+.screen.keyboard-open{top:var(--tread-vv-top)!important;bottom:auto!important;height:var(--tread-vv-height)!important}
+#sheetBg.keyboard-open{top:var(--tread-vv-top)!important;bottom:auto!important;height:var(--tread-vv-height)!important}
+#sheetBg.keyboard-open .sheet{max-height:88%;overflow-y:auto;overscroll-behavior:contain}
+#screen-chat .input-area,#screen-post .input-area{bottom:0!important;padding-bottom:max(8px,env(safe-area-inset-bottom))}
 #screen-chat .messages{padding-bottom:14px}
-#screen-chat.keyboard-open .input-area{transition:none}
-#screen-chat.keyboard-open .messages{scroll-padding-bottom:14px}
+.screen.keyboard-open .input-area{transition:none}
 .presence-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#35c979;margin-right:5px;box-shadow:0 0 0 3px rgba(53,201,121,.13)}
 </style>
 <script id="tread-keyboard-viewport-fix">
 (()=>{
- const vv=window.visualViewport,screen=document.getElementById('screen-chat');
- if(!vv||!screen)return;
+ const vv=window.visualViewport;
+ if(!vv)return;
  let fullHeight=Math.max(window.innerHeight,document.documentElement.clientHeight,vv.height);
- let lastOrientation=screen._treadOrientation||window.orientation||0;
- let raf=0;
+ let lastOrientation=window.orientation||0,raf=0;
  const update=()=>{
   cancelAnimationFrame(raf);
   raf=requestAnimationFrame(()=>{
@@ -4465,18 +4465,25 @@ if(window.treadSupabaseReady()){
     lastOrientation=orientation;
     fullHeight=Math.max(window.innerHeight,document.documentElement.clientHeight,vv.height);
    }
-   const visibleHeight=vv.height;
-   const keyboard=Math.max(0,fullHeight-visibleHeight-vv.offsetTop);
+   const keyboard=Math.max(0,fullHeight-vv.height-vv.offsetTop);
    const open=keyboard>100;
-   screen.classList.toggle('keyboard-open',open);
+   const root=document.documentElement;
+   root.style.setProperty('--tread-vv-top',open?vv.offsetTop+'px':'0px');
+   root.style.setProperty('--tread-vv-height',open?vv.height+'px':'100%');
+   root.style.setProperty('--tread-kb',open?keyboard+'px':'0px');
+   document.querySelectorAll('.screen').forEach(el=>el.classList.toggle('keyboard-open',open&&el.classList.contains('on')));
+   document.getElementById('sheetBg')?.classList.toggle('keyboard-open',open&&document.getElementById('sheetBg').classList.contains('open'));
    if(open){
-    screen.style.setProperty('--tread-vv-top',vv.offsetTop+'px');
-    screen.style.setProperty('--tread-vv-height',visibleHeight+'px');
-    screen.style.setProperty('--tread-kb',keyboard+'px');
-   }else{
-    screen.style.setProperty('--tread-vv-top','0px');
-    screen.style.setProperty('--tread-vv-height','100%');
-    screen.style.setProperty('--tread-kb','0px');
+    const active=document.activeElement;
+    if(active&&active.matches('input,textarea,[contenteditable="true"]')){
+     requestAnimationFrame(()=>{
+      const sheet=document.getElementById('sheet');
+      if(sheet&&sheet.contains(active)){
+       const r=active.getBoundingClientRect(),sr=sheet.getBoundingClientRect();
+       if(r.bottom>sr.bottom-12)sheet.scrollTop+=r.bottom-sr.bottom+24;
+      }
+     });
+    }
    }
   });
  };
@@ -4484,8 +4491,10 @@ if(window.treadSupabaseReady()){
  vv.addEventListener('scroll',update);
  window.addEventListener('resize',update);
  window.addEventListener('orientationchange',()=>setTimeout(update,300));
- document.addEventListener('focusin',e=>{if(e.target?.id==='msgInput')setTimeout(update,80)});
- document.addEventListener('focusout',e=>{if(e.target?.id==='msgInput')setTimeout(update,220)});
+ document.addEventListener('focusin',e=>{if(e.target?.matches('input,textarea,[contenteditable="true"]'))setTimeout(update,80)});
+ document.addEventListener('focusout',e=>{if(e.target?.matches('input,textarea,[contenteditable="true"]'))setTimeout(update,220)});
+ const observer=new MutationObserver(update);
+ observer.observe(document.getElementById('sheetBg')||document.body,{attributes:true,attributeFilter:['class']});
  update();
 })();
 </script>
