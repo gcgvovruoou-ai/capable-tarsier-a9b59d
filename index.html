@@ -1834,9 +1834,11 @@ function openMsgActions(id,sourceEl){
   const parent=exact?findTopParentByMessage(currentChat,exact):findTopParent(currentChat,id);
   const m=exact|| (String(parent?.id)===String(id)?parent:parent?.replies?.find(r=>String(r.id)===String(id)));if(!m||!parent)return;
   id=m.id;
+  const sourceIndex=sourceEl?.dataset.messageIndex;
+  const replyTargetArg=sourceIndex==null?'':`,document.querySelector('#messages .msg[data-message-index="${sourceIndex}"]')`;
   const isRoot=String(parent.id)===String(id),canThread=currentChat.type==='group';
   sheet(`<div class="grip"></div><h2>${esc(m.author)}</h2>
-    ${m.gift?'':`<div class="sitem" onclick="closeSheet();startChatReply(${id})"><span class="si">↩</span>Ответить</div><div class="sitem" onclick="closeSheet();beginQuoteSelection(${id})"><span class="si">❞</span>Ответить на фрагмент</div><div class="sitem" onclick="closeSheet();beginMultiSelect(${id})"><span class="si">☑</span>Выбрать несколько</div><div class="sitem" onclick="closeSheet();openMessageForward(${id})"><span class="si">↗</span>Переслать</div>`}
+    ${m.gift?'':`<div class="sitem" onclick="closeSheet();startChatReply(${id}${replyTargetArg})"><span class="si">↩</span>Ответить</div><div class="sitem" onclick="closeSheet();beginQuoteSelection(${id})"><span class="si">❞</span>Ответить на фрагмент</div><div class="sitem" onclick="closeSheet();beginMultiSelect(${id})"><span class="si">☑</span>Выбрать несколько</div><div class="sitem" onclick="closeSheet();openMessageForward(${id})"><span class="si">↗</span>Переслать</div>`}
     ${canThread&&isRoot?`<div class="sitem" onclick="closeSheet();toggleInlineThread(${id})"><span class="si">💬</span>${openThreads[id]?'Свернуть ответы':'Показать ответы'}</div>`:''}
     ${isRoot?`<div class="sitem" onclick="closeSheet();togglePin(${id})"><span class="si">📌</span>${m.pinned?'Снять закреп':'Закрепить'}</div>`:''}
     ${!m.gift?`<div class="sitem" onclick="closeSheet();toggleFavoriteMessage(${id})"><span class="si">${m.favorite?'★':'☆'}</span>${m.favorite?'Убрать из избранного':'В избранное'}</div>`:''}
