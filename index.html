@@ -4794,6 +4794,7 @@ if(window.treadSupabaseReady()){
   window.treadGiftCatalog=Array.isArray(payload.catalog)?payload.catalog:[];
   walletState.loaded=true;
   save();
+  try{if(typeof renderMyProfile==='function')renderMyProfile()}catch(e){console.warn('Profile wallet refresh:',e)}
   return data.wallet;
  };
  window.ensureElix=function(){
@@ -4827,7 +4828,8 @@ if(window.treadSupabaseReady()){
  };
  const requireWallet=async()=>{
   if(!window.treadCurrentUser){toast('Войди в аккаунт, чтобы использовать серверный кошелёк');return false}
-  try{await window.treadWalletSync();return true}
+  if(walletState.loaded)return true;
+  try{await window.treadWalletSync();return walletState.loaded}
   catch(e){console.error('tread wallet sync',e);toast('Не удалось загрузить кошелёк: '+(e?.message||e));return false}
  };
  const localOpenWallet=window.openElixWallet;
@@ -4906,7 +4908,7 @@ if(window.treadSupabaseReady()){
  };
  window.addEventListener('tread-auth-changed',event=>{
   walletState.loaded=false;
-  if(event.detail)window.treadWalletSync().catch(e=>console.warn('Wallet sync after sign-in:',e?.message||e));
+  if(event.detail)window.treadWalletSync().then(()=>{try{if(typeof renderMyProfile==='function')renderMyProfile()}catch(e){console.warn('Profile wallet refresh:',e)}}).catch(e=>console.warn('Wallet sync after sign-in:',e?.message||e));
   else{window.treadGiftCatalog=[];walletState.loaded=false;walletState.legacyImported=false;data.wallet={balance:1000,history:[],inventory:[],giftCounters:{},unlimitedOwner:false};save();}
  });
 })();
