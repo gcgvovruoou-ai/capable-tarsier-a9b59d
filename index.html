@@ -4137,9 +4137,9 @@ if(window.treadSupabaseReady()){
  async function refreshMessages(chat=currentChat){
   const sb=client();if(!sb||!chat?._remoteConversationId)return;
   const {data:rows,error}=await sb.from('messages').select('id,conversation_id,sender_id,body,created_at,reply_to_id').eq('conversation_id',chat._remoteConversationId).order('created_at',{ascending:true}).limit(500);
-  if(error){console.error(error);notify('Не удалось загрузить сообщения: '+error.message);return;}
+  if(error){console.error(error);notify('Не удалось загрузить сообщения: '+error.message);return false;}
   const mids=(rows||[]).map(x=>x.id);let reactions=[];
-  if(mids.length){const rr=await sb.from('message_reactions').select('message_id,user_id,emoji').in('message_id',mids);if(rr.error){notify('Не удалось загрузить реакции: '+rr.error.message);return;}reactions=rr.data||[];}
+  if(mids.length){const rr=await sb.from('message_reactions').select('message_id,user_id,emoji').in('message_id',mids);if(rr.error){notify('Не удалось загрузить реакции: '+rr.error.message);return false;}reactions=rr.data||[];}
   const uids=[...new Set([...(rows||[]).map(x=>x.sender_id),...reactions.map(x=>x.user_id)].filter(Boolean))];let profiles=[];
   if(uids.length){const pr=await sb.from('profiles').select('id,display_name,username,avatar_url').in('id',uids);if(!pr.error)profiles=pr.data||[];}
   const byId=new Map(profiles.map(p=>[p.id,p])),byRemote=new Map(),byLocal=new Map();
@@ -4148,10 +4148,12 @@ if(window.treadSupabaseReady()){
   const roots=[];for(const m of mapped){if(m.replyToId&&byLocal.has(m.replyToId)){byLocal.get(m.replyToId).replies.push(m);}else roots.push(m);}
   const localOnly=(chat.messages||[]).filter(m=>!m._remoteId&&!String(m.id).startsWith('db_'));
   chat.messages=roots.concat(localOnly).sort((x,y)=>(x.createdAt||0)-(y.createdAt||0));
-  if(currentChat===chat){renderMessages(chat.lastReadTs);renderPinBanner();}save();
+  if(currentChat===chat){renderMessages(chat.lastReadTs);renderPinBanner();}save();return true;
  }
  async function loadConversations(){
   const sb=client();if(!sb||loading)return;loading=true;
+  // Не теряем предыдущий список, если серверная синхронизация завершится ошибкой.
+  const previousChats=JSON.parse(JSON.stringify(data.chats||[]));
   try{
    const uid=window.treadCurrentUser.id;
    const {data:members,error:merr}=await sb.from('conversation_members').select('conversation_id').eq('user_id',uid);if(merr)throw merr;
@@ -4171,10 +4173,9 @@ if(window.treadSupabaseReady()){
     // Старые онлайн-чаты могли сохраниться локально без _remoteConversationId.
     // Привязываем их к серверной переписке по стабильному ID или ID собеседника.
     let chat=data.chats.find(x=>x._remoteConversationId===c.id);
-    if(!chat)chat=data.chats.find(x=>!x._remoteConversationId&&(
-      String(x.id)===String(idFromUuid(c.id))||
-      (peerId&&String(x.peerUserId||x.userId||x.recipientId||'')===String(peerId))
-    ));
+    if(!chat)chat=data.chats.find(x=>!x._remoteConversationId&&
+      String(x.id)===String(idFromUuid(c.id))
+    );
     let person=null;
     if(peerId){const p=await sb.from('profiles').select('id,display_name,username,avatar_url').eq('id',peerId).maybeSingle();if(!p.error)person=p.data;}
     if(!chat){
@@ -4186,10 +4187,16 @@ if(window.treadSupabaseReady()){
     chat.type='direct';
     if(person?.display_name||person?.username)chat.title=person.display_name||person.username;
     if(!Array.isArray(chat.messages))chat.messages=[];
-    await refreshMessages(chat);
+    const refreshed=await refreshMessages(chat);
+    if(refreshed===false)throw new Error('Не удалось получить полную историю сообщений. Список оставлен без изменений.');
    }
    renderList();save();
-  }catch(e){console.error('tread conversations load',e);notify('Ошибка загрузки чатов: '+e.message);}
+  }catch(e){
+   data.chats=previousChats;
+   renderList();
+   console.error('tread conversations load',e);
+   notify('Ошибка загрузки чатов: '+e.message);
+  }
   finally{loading=false;}
  }
  function paintPresence(chat){
