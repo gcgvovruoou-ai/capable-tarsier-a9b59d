@@ -4899,7 +4899,7 @@ if(window.treadSupabaseReady()){
  window.addEventListener('tread-auth-changed',event=>{
   walletState.loaded=false;
   if(event.detail)window.treadWalletSync().catch(e=>console.warn('Wallet sync after sign-in:',e?.message||e));
-  else{window.treadGiftCatalog=[];if(data.wallet)data.wallet.unlimitedOwner=false;}
+  else{window.treadGiftCatalog=[];walletState.loaded=false;data.wallet={balance:1000,history:[],inventory:[],giftCounters:{},unlimitedOwner:false};save();}
  });
 })();
 </script>
