@@ -3786,9 +3786,9 @@ function menuHTML(){ensureElix();const m=data.me,v=m.profileSticker,w=data.walle
  <div class="st-note" style="text-align:center">Настройки и данные хранятся на этом устройстве.<br>tread. · Все функции Premium пока бесплатны.</div></div>`}
 window.stFilter=q=>{q=q.trim().toLowerCase();$$('.st-group[data-menu]').forEach(g=>{let n=0;g.querySelectorAll('.st-row').forEach(r=>{const ok=!q||r.dataset.k.includes(q);r.style.display=ok?'':'none';if(ok)n++});g.style.display=n?'':'none'})};
 function renderMenu(){const c=$('#myProfileContent');c.innerHTML=menuHTML();const el=$('#stBal');if(el){if(data.wallet&&data.wallet.unlimitedOwner){el.textContent='∞';el.classList.add('inf')}else if(window.countUp)countUp(el,data.wallet?data.wallet.balance:0);else el.textContent=formatElix(data.wallet.balance)}}
-window.renderMyProfile=function(){const p=$('#screen-my-profile'),cur=$('#myProfileContent .settings-subpage');if(p&&p.classList.contains('settings-page-open')&&cur)return openSettingsPage(cur.dataset.settingsPage);renderMenu()};
-window.backToSettingsMenu=function(){const p=$('#screen-my-profile');if(p)p.classList.remove('settings-page-open');renderMenu();document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));p&&p.classList.add('on')};
-window.openMyProfile=function(){const p=$('#screen-my-profile');if(p)p.classList.remove('settings-page-open');renderMenu();syncBottomNav('profile');openScreen('screen-my-profile')};
+/* Profile rendering/navigation stay with the original app functions. */
+window.backToSettingsMenu=function(){const p=$('#screen-my-profile');if(p)p.classList.remove('settings-page-open');renderMyProfile();document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));p&&p.classList.add('on')};
+/* Do not override the original openMyProfile() handler. */
 /* ---------- страницы ---------- */
 const PAGES={
 account:()=>G('',R({i:'user',t:'Имя',v:esc(data.me.name),go:"editField('name')",chev:1})+R({i:'image',t:'Фото профиля',v:data.me.image?'Загружено':'Нет',go:'pickMeImage()',chev:1})+R({i:'lock',t:'Имя пользователя',v:esc(data.me.handle),go:"editField('handle')"})+R({i:'smile',t:'Стикер профиля',s:'Анимированный стикер рядом с именем',go:'openProfileStickerPicker()',chev:1}),'Имя и фото видны другим пользователям. Юзернейм можно изменить в любой момент.'),
