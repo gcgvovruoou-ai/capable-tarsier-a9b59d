@@ -4646,51 +4646,6 @@ if(window.treadSupabaseReady()){
 .gift-art-display .pepe-art{box-sizing:border-box}
 @media(max-width:380px){.pst-picker-grid{gap:7px}.pst-picker-tile{border-radius:12px}}
 </style>
-<script id="tread-profile-open-guard">
-(()=> {
-  const originalRender=window.renderMyProfile;
-  const fallback=()=>{
-    const root=document.getElementById('myProfileContent');
-    if(!root)return;
-    const appData=typeof data!=='undefined'?data:{};
-    const me=appData.me||{},wallet=appData.wallet||{};
-    const safe=(v)=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    const name=safe(me.name||'Профиль');
-    const avatar=me.image?'':safe(me.avatar||'');
-    const avatarStyle=me.image?'background-image:url("'+safe(me.image)+'")':'background:'+(typeof hashColor==='function'?hashColor(me.name||''): 'var(--surface)');
-    const sticker=me.profileSticker&&typeof window.stk==='function'?window.stk(me.profileSticker,22):'';
-    const giftIcon=typeof window.treadIcon==='function'?window.treadIcon('gift'):'✦';
-    const balance=wallet.unlimitedOwner?'∞':(typeof formatElix==='function'?formatElix(wallet.balance??1000):String(wallet.balance??1000));
-    const count=Array.isArray(wallet.inventory)?wallet.inventory.length:0;
-    const rows=[['account','👤','Мой аккаунт','Имя, фото и имя пользователя'],['privacy','🔒','Конфиденциальность','Номер, видимость и блокировки'],['notifications','♧','Уведомления и звуки','Сообщения, лента и вибрация'],['data','▤','Данные и память','Автозагрузка и хранилище'],['appearance','◐','Оформление','Темы, цвета, шрифты и фон чатов'],['folders','▣','Папки с чатами','Организация списка чатов'],['energy','ϟ','Энергосбережение','Анимации и эффекты'],['devices','▱','Устройства','Активные сеансы'],['language','文','Язык','Язык интерфейса'],['advanced','✦','Дополнительно','Плеер мод и экспериментальные функции']];
-    root.innerHTML=`
-      <div class="settings-hero"><div class="profile-head" style="padding:8px 0 16px">
-        <div class="profile-av" onclick="pickMeImage()" style="${avatarStyle}">${avatar}</div>
-        <div class="profile-info"><div class="profile-nick">${name} ${sticker}</div>
-          <div class="profile-handle" onclick="editField('handle')">${safe(me.handle||'Задать юзернейм')} · Изменить</div>
-          <div class="settings-status">● Гостевой режим</div></div>
-        <button class="settings-edit" onclick="editField('name')">Изменить</button>
-      </div></div>
-      <div class="settings-premium" onclick="openSettingsPage('premium')"><div class="premium-mark">✦</div><div class="premium-copy"><b>tread. Premium</b><span>Все дополнительные возможности открыты бесплатно</span></div><span class="premium-arrow">›</span></div>
-      <div class="elix-card" onclick="openElixWallet()"><div class="elix-gem">✦</div><div><div class="elix-balance">${balance} <span style="font-size:13px;color:var(--accent)">эликсов</span></div><div class="elix-caption">Твой баланс · подарки и поддержка</div></div><span class="elix-arrow">›</span></div>
-      <button class="gift-collection-btn" onclick="openProfileGifts()"><span class="gift-btn-icon">${giftIcon}</span><span class="gift-btn-copy"><b>Мои подарки</b><small>${count} в коллекции · посмотреть отправителей и стоимость</small></span><span class="elix-arrow">›</span></button>
-      <button class="profile-sticker-btn" onclick="openProfileStickerPicker()"><span class="profile-sticker-preview">${sticker||'✨'}</span><span class="profile-sticker-copy"><b>Стикер профиля</b><small>${me.profileSticker?'Сейчас установлен · нажми, чтобы изменить':'Выбери стикер, который будет рядом с именем'}</small></span><span class="profile-sticker-mark">✎</span></button>
-      <div class="profile-section settings-menu">${rows.map(([id,ic,title,sub])=>`<div class="setting-row settings-nav-row" onclick="openSettingsPage('${id}')"><span class="ic">${ic}</span><span class="settings-nav-copy"><span class="lbl">${title}</span><small>${sub}</small></span><span class="premium-arrow">›</span></div>`).join('')}</div>
-      <div class="privacy-note">Настройки и данные хранятся на этом устройстве.<br>tread. · Все функции Premium пока бесплатны.</div>`;
-  };
-  window.renderMyProfile=function(){
-    try{if(typeof originalRender==='function')return originalRender.apply(this,arguments)}
-    catch(error){console.error('tread profile render failed',error);fallback()}
-  };
-  window.openMyProfile=function(){
-    const screen=document.getElementById('screen-my-profile');
-    try{window.renderMyProfile()}catch(error){console.error('tread profile open failed',error);fallback()}
-    if(screen)screen.classList.remove('settings-page-open');
-    if(typeof window.syncBottomNav==='function')window.syncBottomNav('profile');
-    if(typeof window.openScreen==='function')window.openScreen('screen-my-profile');
-    else if(screen){document.querySelectorAll('.screen').forEach(x=>x.classList.remove('on'));screen.classList.add('on')}
-  };
-})();
-</script>
+
 </body>
 </html>
