@@ -4731,70 +4731,7 @@ if(window.treadSupabaseReady()){
  };
 })();
 </script>
-<script id="tread-restore-legacy-profile">
-(()=>{
-  // Keep the original profile screen as the active implementation.
-  window.renderMyProfile=function(){
-    ensureElix();
-    const content=document.getElementById('myProfileContent');
-    if(!content)throw new Error('myProfileContent element not found');
-    const me=data.me||{},wallet=data.wallet||{};
-    content.innerHTML=\`
-      <div class="settings-hero"><div class="profile-head" style="padding:8px 0 16px">
-        <div class="profile-av" onclick="pickMeImage()" style="\${me.image?\`background-image:url(\${esc(me.image)})\`:\`background:\${hashColor(me.name)}\`}">\${me.image?'':(me.avatar||'')}</div>
-        <div class="profile-info"><div class="profile-nick">\${esc(me.name||'Профиль')} \${me.profileSticker?\`<span class="profile-sticker-inline">\${stk(me.profileSticker,22)}</span>\`:''}</div>
-          <div class="profile-handle" onclick="editField('handle')">\${esc(me.handle||'Задать юзернейм')} · Изменить</div>
-          <div class="settings-status">● Гостевой режим</div></div>
-        <button class="settings-edit" onclick="editField('name')">Изменить</button></div></div>
-      <div class="settings-premium" onclick="openSettingsPage('premium')"><div class="premium-mark">✦</div><div class="premium-copy"><b>tread. Premium</b><span>Все дополнительные возможности открыты бесплатно</span></div><span class="premium-arrow">›</span></div>
-      <div class="elix-card" onclick="openElixWallet()"><div class="elix-gem">✦</div><div><div class="elix-balance">\${wallet.unlimitedOwner?'∞':formatElix(wallet.balance??1000)} <span style="font-size:13px;color:var(--accent)">эликсов</span></div><div class="elix-caption">Твой баланс · подарки и поддержка</div></div><span class="elix-arrow">›</span></div>
-      <button class="gift-collection-btn" onclick="openProfileGifts()"><span class="gift-btn-icon">\${treadIcon('gift')}</span><span class="gift-btn-copy"><b>Мои подарки</b><small>\${(wallet.inventory||[]).length} в коллекции · посмотреть отправителей и стоимость</small></span><span class="elix-arrow">›</span></button>
-      <button class="profile-sticker-btn" onclick="openProfileStickerPicker()"><span class="profile-sticker-preview">\${esc(me.profileSticker||'✨')}</span><span class="profile-sticker-copy"><b>Стикер профиля</b><small>\${me.profileSticker?'Сейчас установлен · нажми, чтобы изменить':'Выбери стикер, который будет рядом с именем'}</small></span><span class="profile-sticker-mark">✎</span></button>
-      <div class="profile-section settings-menu">
-        \${[['account','👤','Мой аккаунт','Имя, фото и имя пользователя'],['privacy','🔒','Конфиденциальность','Номер, видимость и блокировки'],['notifications','♧','Уведомления и звуки','Сообщения, лента и вибрация'],['data','▤','Данные и память','Автозагрузка и хранилище'],['appearance','◐','Оформление','Темы, цвета, шрифты и фон чатов'],['folders','▣','Папки с чатами','Организация списка чатов'],['energy','ϟ','Энергосбережение','Анимации и эффекты'],['devices','▱','Устройства','Активные сеансы'],['language','文','Язык','Язык интерфейса'],['advanced','✦','Дополнительно','Плеер мод и экспериментальные функции']].map(([id,ic,title,sub])=>\`<div class="setting-row settings-nav-row" onclick="openSettingsPage('\${id}')"><span class="ic">\${ic}</span><span class="settings-nav-copy"><span class="lbl">\${title}</span><small>\${sub}</small></span><span class="premium-arrow">›</span></div>\`).join('')}
-      </div><div class="privacy-note">Настройки и данные хранятся на этом устройстве.<br>tread. · Все функции Premium пока бесплатны.</div>\`;
-  };
-  window.openMyProfile=function(){
-    const profile=document.getElementById('screen-my-profile');
-    if(profile)profile.classList.remove('settings-page-open');
-    window.renderMyProfile();
-    if(typeof window.syncBottomNav==='function')window.syncBottomNav('profile');
-    if(typeof window.openScreen==='function')window.openScreen('screen-my-profile');
-    else if(profile){document.querySelectorAll('.screen').forEach(x=>x.classList.remove('on'));profile.classList.add('on')}
-  };
-})();
-</script>
-<script id="tread-profile-navigation-hotfix">
-(()=>{
-  window.openMyProfile=function(){
-    const target=document.getElementById('screen-my-profile');
-    if(!target){console.error('[tread] screen-my-profile not found');return}
-    // Switch screens first: a rendering error must never swallow the navigation tap.
-    document.querySelectorAll('.screen').forEach(el=>el.classList.remove('on'));
-    target.classList.add('on');
-    target.classList.remove('settings-page-open');
-    if(Array.isArray(window.viewStack)){
-      window.viewStack.push('screen-my-profile');
-    }
-    try{
-      if(typeof window.syncBottomNav==='function')window.syncBottomNav('profile');
-      if(typeof window.renderMyProfile==='function')window.renderMyProfile();
-      else if(typeof window.renderMenu==='function')window.renderMenu();
-    }catch(error){
-      console.error('[tread] profile renderer failed after opening screen:',error);
-      const content=document.getElementById('myProfileContent');
-      /* Keep the original profile markup intact; do not replace it with a fake loading notice. */
-    }
-    try{if(typeof window.haptic==='function')window.haptic()}catch(_){}
-  };
-  document.addEventListener('click',event=>{
-    const button=event.target.closest('#nav-profile');
-    if(!button)return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    window.openMyProfile();
-  },true);
-})();
-</script>
+
+
 </body>
 </html>
