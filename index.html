@@ -4745,7 +4745,7 @@ if(window.treadSupabaseReady()){
   }
   return '';
  };
- const genericArt=g=>'<span class="tgg-art" role="img" aria-label="'+escHtml(g?.name||'Предмет')+'">'+escHtml(g?.icon||'✦')+'</span>'
+ const genericArt=g=>`<span class="tgg-art" role="img" aria-label="${escHtml(g?.name||'Предмет')}">${escHtml(g?.icon||'✦')}</span>`;
  const art=g=>{
   const id=canonical(g);
   if(id==='pepe')return pepeGiftArt();
