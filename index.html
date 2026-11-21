@@ -4751,9 +4751,9 @@ if(window.treadSupabaseReady()){
   const body=tab==='shop'?'<div class="nft-grid">'+(window.treadGiftCatalog?.length?window.treadGiftCatalog:ELIX_GIFTS).map(g=>card(g,'shop')).join('')+'</div>':
    tab==='collection'?(inv.length?'<div class="nft-grid">'+inv.map(g=>card(g,'inv')).join('')+'</div>':'<div class="privacy-note">Коллекция пока пуста. Загляни в магазин подарков.</div>')+'<div class="privacy-note">После покупки подарок нельзя продать 24 часа. Передаривание доступно сразу; таймер продажи начинается заново.</div>':
    '<div class="profile-section-title">История операций</div>'+rows+'<div class="privacy-note">Продажа подарков облагается комиссией '+ELIX_SELL_FEE+'%. Это локальный тест: реальные платежи пока не подключены.</div>';
-  sheet('<div class="grip"></div><div style="text-align:center;padding:12px 0 15px"><div class="elix-gem" style="margin:auto;width:58px;height:58px;font-size:32px">✦</div><div class="elix-bal '+(data.wallet.unlimitedOwner?'inf':'')+'" id="elixBal">'+(data.wallet.unlimitedOwner?'∞':'')+'</div><div style="color:var(--muted)">эликсов</div><div style="font-size:12px;color:var(--muted);margin-top:8px">'+(data.wallet.unlimitedOwner?'Для владельца действует бесконечный баланс':'Внутренняя валюта tread.')+'</div></div><div class="elix-shop-tabs"><button class="'+(tab==='wallet'?'active':'')+'" onclick="openElixWallet(\'wallet\')">Кошелёк</button><button class="'+(tab==='shop'?'active':'')+'" onclick="window.openGiftShop()">Магазин</button><button class="'+(tab==='collection'?'active':'')+'" onclick="openElixWallet(\'collection\')">Коллекция</button></div>'+body);
+  sheet('<div class="grip"></div><div style="text-align:center;padding:12px 0 15px"><div class="elix-gem" style="margin:auto;width:58px;height:58px;font-size:32px">✦</div><div class="elix-bal '+(data.wallet.unlimitedOwner?'inf':'')+'" id="elixBal">'+(data.wallet.unlimitedOwner?'∞':formatElix(data.wallet.balance??0))+'</div><div style="color:var(--muted)">эликсов</div><div style="font-size:12px;color:var(--muted);margin-top:8px">'+(data.wallet.unlimitedOwner?'Для владельца действует бесконечный баланс':'Внутренняя валюта tread.')+'</div></div><div class="elix-shop-tabs"><button class="'+(tab==='wallet'?'active':'')+'" onclick="openElixWallet(\'wallet\')">Кошелёк</button><button class="'+(tab==='shop'?'active':'')+'" onclick="window.openGiftShop()">Магазин</button><button class="'+(tab==='collection'?'active':'')+'" onclick="openElixWallet(\'collection\')">Коллекция</button></div>'+body);
   if(tab==='collection'){const sh=document.getElementById('sheet');if(sh)sh.classList.add('gift-collection-sheet')}
-  if(!data.wallet.unlimitedOwner&&typeof countUp==='function')countUp(document.getElementById('elixBal'),data.wallet.balance);
+  /* Баланс уже выведен синхронно в HTML: не оставляем пустое место до анимации. */
  };
  const previous=window.renderMsg;
  if(typeof previous==='function')window.renderMsg=function(m,index){
@@ -4825,8 +4825,25 @@ if(window.treadSupabaseReady()){
  };
  window.openGiftShop=async function(){
   if(!await requireWallet())return;
-  try{return localOpenWallet('shop')}
-  catch(e){console.error('Gift shop render failed:',e);toast('Не удалось открыть магазин: '+(e?.message||e))}
+  try{
+   const source=Array.isArray(window.treadGiftCatalog)&&window.treadGiftCatalog.length?window.treadGiftCatalog:ELIX_GIFTS;
+   const catalog=source.filter(g=>g&&typeof g==='object').map(g=>({
+    ...g,
+    id:String(g.id??g.gift_id??g.slug??''),
+    name:String(g.name??g.title??'Подарок'),
+    price:Number(g.price??g.cost??0),
+    rarity:String(g.rarity??'Обычный')
+   })).filter(g=>g.id);
+   if(!catalog.length)throw new Error('Каталог подарков пуст');
+   const cards=catalog.map(g=>{
+    const id=escHtml(g.id),name=escHtml(g.name),rarity=escHtml(g.rarity);
+    let artwork='';
+    try{artwork=art(g)}catch(renderError){console.warn('Gift artwork fallback:',renderError);artwork=genericArt}
+    const colors=palette[canonical(g)]||['#a5b4fc','#37306b'];
+    return '<div class="nft-gift" data-rarity="'+rarity+'" style="--n1:'+colors[0]+';--n2:'+colors[1]+'" onclick="openGiftView(\'shop\',\''+id+'\')"><div class="nft-top"><span class="nft-number">ВЫПУСК</span><span class="nft-edition">'+rarity+'</span></div><div class="nft-model">'+artwork+'</div><div class="nft-bottom"><div class="nft-title">'+name+'</div><div class="nft-rarity">tread. digital collectible</div><div class="nft-price">✦ '+formatElix(g.price)+'</div></div></div>';
+   }).join('');
+   sheet('<div class="grip"></div><div style="text-align:center;padding:10px 0 14px"><div class="elix-gem" style="margin:auto;width:52px;height:52px;font-size:29px">✦</div><div class="elix-bal '+(data.wallet.unlimitedOwner?'inf':'')+'">'+(data.wallet.unlimitedOwner?'∞':formatElix(data.wallet.balance??0))+'</div><div style="color:var(--muted)">эликсов</div></div><div class="elix-shop-tabs"><button onclick="openElixWallet(\'wallet\')">Кошелёк</button><button class="active" onclick="window.openGiftShop()">Магазин</button><button onclick="openElixWallet(\'collection\')">Коллекция</button></div><div class="nft-grid">'+cards+'</div>');
+  }catch(e){console.error('Gift shop render failed:',e);toast('Не удалось открыть магазин: '+(e?.message||String(e)))}
  };
  const localOpenProfileGifts=window.openProfileGifts;
  window.openProfileGifts=async function(){
