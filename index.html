@@ -4788,8 +4788,15 @@ if(window.treadSupabaseReady()){
  const genericArt=g=>`<span class="tgg-art" role="img" aria-label="${escHtml(g?.name||'Предмет')}">${escHtml(g?.icon||'✦')}</span>`;
  const art=g=>{
   const id=canonical(g);
-  if(id==='pepe')return pepeGiftArt();
-  if(id&&typeof GA!=='undefined'&&GA[id]&&typeof gart==='function')return gart({...g,id});
+  if(!id)return genericArt(g);
+  // GA and gart live in the original gift-renderer closure; use its public renderer here.
+  // Checking GA directly from this later IIFE always failed and silently rendered emojis.
+  if(typeof window.treadGiftArt==='function'){
+   try{
+    const rendered=window.treadGiftArt({...g,id,model_key:id});
+    if(typeof rendered==='string'&&rendered.includes('<svg'))return rendered;
+   }catch(modelError){console.warn('Collectible SVG render failed:',id,modelError)}
+  }
   return genericArt(g);
  };
  const modelArt=g=>{
