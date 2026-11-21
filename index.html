@@ -2330,7 +2330,7 @@ function openProfileStickerPicker(){
 }
 function selectProfileSticker(value,el){window.pendingProfileSticker=value;document.querySelectorAll('.pst-picker-tile').forEach(x=>x.classList.toggle('selected',x===el));const preview=document.getElementById('pstPickerPreview');if(preview)preview.innerHTML=window.stk(value,76)}
 function saveProfileSticker(){if(window.pendingProfileSticker!==undefined){data.me.profileSticker=window.pendingProfileSticker;delete window.pendingProfileSticker;save();closeSheet();renderMyProfile();toast('Стикер профиля обновлён')}}
-function openMyProfile(){const content=document.getElementById('myProfileContent');try{if(typeof window.renderMenu==='function')window.renderMenu();else renderMyProfile()}catch(err){console.error('Profile menu render failed:',err);try{renderMyProfile()}catch(fallbackErr){console.error('Legacy profile render failed:',fallbackErr);if(content)content.innerHTML='<div class="empty"><div class="empty-title">Не удалось загрузить профиль</div><button class="btn sec" onclick="openMyProfile()">Повторить</button></div>'}}syncBottomNav('profile');openScreen('screen-my-profile')}
+function openMyProfile(){const content=document.getElementById('myProfileContent');try{if(typeof window.renderMenu!=='function')throw new Error('Единый рендер профиля не инициализирован');window.renderMenu()}catch(err){console.error('Profile render failed:',err);if(content)content.innerHTML='<div class="empty"><div class="empty-title">Не удалось загрузить профиль</div><div class="privacy-note">Ошибка отрисовки. Подробности сохранены в консоли.</div><button class="btn sec" onclick="openMyProfile()">Повторить</button></div>'}syncBottomNav('profile');openScreen('screen-my-profile')}
 function closeMyProfile(){closeScreen();syncBottomNav(currentTab)}
 function randomUserHandle(name){
   const words=['bright','silver','quiet','wild','swift','blue','happy','urban','lucky','cosmic','fresh','golden'];
@@ -2338,21 +2338,7 @@ function randomUserHandle(name){
   let hash=0;for(let i=0;i<String(name||'').length;i++)hash=(hash*31+String(name).charCodeAt(i))>>>0;
   return '@'+words[hash%words.length]+(clean?clean.slice(0,5):'user')+String(1000+(hash%9000));
 }
-function renderMyProfile(){
-  ensureElix();
-  const content=document.getElementById('myProfileContent');
-  content.innerHTML=`
-    <div class="settings-hero"><div class="profile-head" style="padding:8px 0 16px">
-      <div class="profile-av" onclick="pickMeImage()" style="${data.me.image?`background-image:url(${esc(data.me.image)})`:`background:${hashColor(data.me.name)}`}" >${data.me.image?'':data.me.avatar}</div>
-      <div class="profile-info"><div class="profile-nick">${esc(data.me.name)} ${data.me.profileSticker?`<span class="profile-sticker-inline">${stk(data.me.profileSticker,22)}</span>`:''} </div><div class="profile-handle" onclick="editField('handle')">${esc(data.me.handle||'Задать юзернейм')} · Изменить</div><div class="settings-status">● Гостевой режим</div></div>
-      <button class="settings-edit" onclick="editField('name')">Изменить</button></div></div>
-    <div class="settings-premium" onclick="openSettingsPage('premium')"><div class="premium-mark">✦</div><div class="premium-copy"><b>tread. Premium</b><span>Все дополнительные возможности открыты бесплатно</span></div><span class="premium-arrow">›</span></div>
-    <div class="elix-card" onclick="openElixWallet()"><div class="elix-gem">✦</div><div><div class="elix-balance">${data.wallet?.unlimitedOwner?'∞':formatElix(data.wallet?.balance??1000)} <span style="font-size:13px;color:var(--accent)">эликсов</span></div><div class="elix-caption">Твой баланс · подарки и поддержка</div></div><span class="elix-arrow">›</span></div><button class="gift-collection-btn" onclick="openProfileGifts()"><span class="gift-btn-icon">${treadIcon('gift')}</span><span class="gift-btn-copy"><b>Мои подарки</b><small>${(data.wallet?.inventory||[]).length} в коллекции · посмотреть отправителей и стоимость</small></span><span class="elix-arrow">›</span></button>
-    <button class="profile-sticker-btn" onclick="openProfileStickerPicker()"><span class="profile-sticker-preview">${esc(data.me.profileSticker||'✨')}</span><span class="profile-sticker-copy"><b>Стикер профиля</b><small>${data.me.profileSticker?'Сейчас установлен · нажми, чтобы изменить':'Выбери стикер, который будет рядом с именем'}</small></span><span class="profile-sticker-mark">✎</span></button>
-    <div class="profile-section settings-menu">
-      ${[['account','👤','Мой аккаунт','Имя, фото и имя пользователя'],['privacy','🔒','Конфиденциальность','Номер, видимость и блокировки'],['notifications','♧','Уведомления и звуки','Сообщения, лента и вибрация'],['data','▤','Данные и память','Автозагрузка и хранилище'],['appearance','◐','Оформление','Темы, цвета, шрифты и фон чатов'],['folders','▣','Папки с чатами','Организация списка чатов'],['energy','ϟ','Энергосбережение','Анимации и эффекты'],['devices','▱','Устройства','Активные сеансы'],['language','文','Язык','Язык интерфейса'],['advanced','✦','Дополнительно','Плеер мод и экспериментальные функции']].map(([id,ic,title,sub])=>`<div class="setting-row settings-nav-row" onclick="openSettingsPage('${id}')"><span class="ic">${ic}</span><span class="settings-nav-copy"><span class="lbl">${title}</span><small>${sub}</small></span><span class="premium-arrow">›</span></div>`).join('')}
-    </div><div class="privacy-note">Настройки и данные хранятся на этом устройстве.<br>tread. · Все функции Premium пока бесплатны.</div>`;
-}
+function renderMyProfile(){if(typeof window.renderMenu!=='function')throw new Error('Единый рендер профиля не инициализирован');return window.renderMenu()}
 function backToSettingsMenu(){
   renderMyProfile();
   const profile=document.getElementById('screen-my-profile');
