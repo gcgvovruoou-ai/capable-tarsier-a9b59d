@@ -4777,7 +4777,7 @@ if(window.treadSupabaseReady()){
   const id=canonical(g),colors=palette[id]||['#a5b4fc','#37306b'];
   let inner='';
   try{inner=art(g)}catch(modelError){console.warn('Gift model unavailable:',id,modelError);inner=genericArt(g)}
-  return '<div class="nft-art-tile" style="--tile1:'+colors[0]+';--tile2:'+colors[1]+'"><span class="nft-art-spark s1">✦</span><span class="nft-art-spark s2">✧</span><span class="nft-art-spark s3">✦</span>'+inner+'</div>';
+  return '<div class="nft-art-tile" style="--tile1:'+colors[0]+';--tile2:'+colors[1]+'">'+(id==='pepe'?'':'<span class="nft-art-spark s1">✦</span><span class="nft-art-spark s2">✧</span><span class="nft-art-spark s3">✦</span>')+inner+'</div>';
  };
  window.treadGiftModelId=canonical;
  window.treadGiftArt=art;
