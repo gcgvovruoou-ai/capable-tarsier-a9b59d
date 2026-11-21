@@ -4931,3 +4931,18 @@ if(window.treadSupabaseReady()){
 
 </body>
 </html>
+<script id="tread-profile-sticker-runtime-guard">
+(()=>{
+ const fallbackIds=['happy','love','cool','angry','sleepy','cry','star','party','think','sick','wow','frog'];
+ const colors={happy:'#ffc94f',love:'#f36c91',cool:'#63a9e8',angry:'#f07854',sleepy:'#9b8be8',cry:'#72bce9',star:'#f5c85c',party:'#e88acb',think:'#9ba8b8',sick:'#a6c45b',wow:'#f2a34d',frog:'#65c96c'};
+ if(!Array.isArray(window.STK_IDS)||!window.STK_IDS.length)window.STK_IDS=fallbackIds;
+ if(typeof window.stk!=='function')window.stk=function(id,size){const key=window.STK_IDS.includes(id)?id:'happy',c=colors[key]||colors.happy;return '<span class="pst pst-fallback" style="--s:'+(Number(size)||20)+'px;display:inline-grid;width:var(--s);height:var(--s);vertical-align:middle;place-items:center"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="'+c+'"/><circle cx="11.5" cy="13.5" r="1.7" fill="#35291f"/><circle cx="20.5" cy="13.5" r="1.7" fill="#35291f"/><path d="M10 19q6 7 12 0" fill="none" stroke="#35291f" stroke-width="1.8" stroke-linecap="round"/></svg></span>';};
+ window.openProfileStickerPicker=function(){
+  const ids=Array.isArray(window.STK_IDS)&&window.STK_IDS.length?window.STK_IDS:fallbackIds;
+  window.pendingProfileSticker=data.me.profileSticker||'';
+  const preview=window.pendingProfileSticker?window.stk(window.pendingProfileSticker,76):'<span class="pst-picker-empty">Выбери стикер</span>';
+  const tiles=ids.map(id=>'<button type="button" class="pst-picker-tile '+(window.pendingProfileSticker===id?'selected':'')+'" onclick="selectProfileSticker(\''+id+'\',this)" aria-label="'+id+'">'+window.stk(id,42)+'</button>').join('');
+  sheet('<div class="grip"></div><h2>Премиум-стикер</h2><div class="pst-picker-preview" id="pstPickerPreview">'+preview+'</div><div class="privacy-note" style="padding:0 0 10px;border:0;text-align:center">Анимированный стикер появится рядом с именем</div><div class="pst-picker-grid">'+tiles+'</div><div class="actions"><button class="btn sec" onclick="window.pendingProfileSticker=\'\';saveProfileSticker()">Убрать</button><button class="btn pri" onclick="saveProfileSticker()">Сохранить</button></div>');
+ };
+})();
+</script>
