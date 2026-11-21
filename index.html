@@ -3786,7 +3786,7 @@ const PD=h=>`<div class="st-pad">${h}</div>`;
 const MENU=[['Аккаунт',[['account','user','Мой аккаунт','Имя, фото и юзернейм','имя фото юзернейм ник стикер'],['privacy','lock','Конфиденциальность','Новые группы и блокировки','группы блокировка'],['folders','folder','Папки с чатами',()=>FL().length?'Папок: '+FL().length:'Разложи чаты по темам','папки'],['devices','device','Устройства','Текущий сеанс','сеанс']]],['Приложение',[['appearance','palette','Оформление','Тема, акцент, шрифт, фон и сообщения','тема цвет акцент шрифт фон размер текста облака плотность аватарки панель'],['notifications','volume','Звуки и вибрация','Звуки интерфейса и отклик','звук вибрация громкость'],['data','db','Данные и память',()=>'Занято '+fmt(sz(data)),'память кэш копия экспорт импорт'],['energy','bolt','Энергосбережение','Анимации, размытие, стикеры','батарея экономия анимации размытие'],['language','globe','Язык','Русский','язык']]],['Расширения',[['plugins','puzzle','Плагины',()=>plN()?'Установлено: '+plN()+' из 3':'Плеер, опросы, переводчик','плагины плеер опросы переводчик'],['advanced','sliders','Дополнительно','О приложении и сброс','сброс версия о приложении']]]];
 const TITLES={account:'Мой аккаунт',privacy:'Конфиденциальность',folders:'Папки с чатами',devices:'Устройства',appearance:'Оформление',notifications:'Звуки и вибрация',data:'Данные и память',energy:'Энергосбережение',language:'Язык',plugins:'Плагины',advanced:'Дополнительно',premium:'tread. Premium'};
 function menuHTML(){ensureElix();const m=data.me,v=m.profileSticker,w=data.wallet||{};
- return `<div class="st-wrap"><div class="st-hero"><div class="profile-av st-av" onclick="openAvatarView()" style="${m.image?`background-image:url(${esc(m.image)})`:`background:${hashColor(m.name)}`}">${m.image?'':esc(m.avatar||m.name[0])}</div><div class="st-id"><div class="st-nick">${esc(m.name)}${v?stk(v,22):''}<span class="owner-check" onclick="openDevInfo()" style="cursor:pointer">${window.TREAD_BADGE||''}</span></div><div class="st-handle">${esc(m.handle)}<span class="owner-badge" onclick="openDevInfo()" style="cursor:pointer">DEVELOPER</span></div></div><button class="st-edit" onclick="openEditProfile()">${ic('edit',15)}<span>Изменить</span></button></div>
+ return `<div class="st-wrap"><div class="st-hero"><div class="profile-av st-av" onclick="openAvatarView()" style="${m.image?`background-image:url(${esc(m.image)})`:`background:${hashColor(m.name)}`}">${m.image?'':esc(m.avatar||m.name[0])}</div><div class="st-id"><div class="st-nick">${esc(m.name)}${v?stk(v,22):''}${window.treadCurrentUser?.id==='2dddbfcd-9aae-4220-9ad0-7444c6e09fbd'?'<span class="owner-check" onclick="openDevInfo()" style="cursor:pointer">'+(window.TREAD_BADGE||'')+'</span>':''}</div><div class="st-handle">${esc(m.handle)}${window.treadCurrentUser?.id==='2dddbfcd-9aae-4220-9ad0-7444c6e09fbd'?'<span class="owner-badge" onclick="openDevInfo()" style="cursor:pointer">DEVELOPER</span>':''}</div></div><button class="st-edit" onclick="openEditProfile()">${ic('edit',15)}<span>Изменить</span></button></div>
  <div class="settings-premium" onclick="openSettingsPage('premium')"><div class="premium-mark">✦</div><div class="premium-copy"><b>tread. Premium</b><span>Все дополнительные возможности открыты бесплатно</span></div><span class="premium-arrow">›</span></div>
  <div class="st-tiles"><button class="st-tile" onclick="openElixWallet()"><span class="st-tic">${ic('gem')}</span><b id="stBal" class="elix-num"></b><small>Эликсы</small></button><button class="st-tile" onclick="openProfileGifts()"><span class="st-tic">${ic('gift')}</span><b>${(w.inventory||[]).length}</b><small>Подарки</small></button><button class="st-tile" onclick="openProfileStickerPicker()"><span class="st-tic">${v?stk(v,22):ic('smile')}</span><b style="font-size:14px">${v?'Выбран':'Выбрать'}</b><small>Стикер</small></button></div>
  <div class="st-search">${ic('search',18)}<input id="stSearch" placeholder="Поиск по настройкам" oninput="stFilter(this.value)" autocomplete="off"></div>
@@ -4046,16 +4046,17 @@ window.treadOnSignedIn = async function(user){
   // Профиль создаёт SQL-триггер; upsert страхует случай, если триггер не сработал.
   const {error:upsertError}=await window.treadSupabase.from('profiles').upsert({id:user.id,display_name:displayName},{onConflict:'id',ignoreDuplicates:true});
   if(upsertError) console.warn('Profile sync:',upsertError.message);
-  let {data:profile,error:profileError}=await window.treadSupabase.from('profiles').select('display_name,username,avatar_url').eq('id',user.id).maybeSingle();
+  let {data:profile,error:profileError}=await window.treadSupabase.from('profiles').select('display_name,username,avatar_url,profile_sticker').eq('id',user.id).maybeSingle();
   if(profileError) console.warn('Profile load:',profileError.message);
   if(!profile && !profileError){
     const {error:createError}=await window.treadSupabase.from('profiles').upsert({id:user.id,display_name:displayName},{onConflict:'id'});
     if(createError) console.warn('Profile create:',createError.message);
-    const result=await window.treadSupabase.from('profiles').select('display_name,username,avatar_url').eq('id',user.id).maybeSingle();
+    const result=await window.treadSupabase.from('profiles').select('display_name,username,avatar_url,profile_sticker').eq('id',user.id).maybeSingle();
     profile=result.data;profileError=result.error;
     if(profileError) console.warn('Profile reload:',profileError.message);
   }
   if(profile){
+    data.me.profileSticker=String(profile.profile_sticker||'');
     const oldName=String(profile.display_name||'').trim().toLowerCase();
     const legacyDefaultName=['нурофент','новый пользователь','пользователь','user'].includes(oldName);
     const adjectives=['Тихий','Быстрый','Лунный','Добрый','Смелый','Яркий','Мягкий','Северный'];
@@ -4586,9 +4587,14 @@ if(window.treadSupabaseReady()){
   }catch(e){console.warn('Profile sticker migration failed',e)}
 
   // Saving from the picker always returns to the profile root, not a stale settings subpage.
-  window.saveProfileSticker=function(){
+  window.saveProfileSticker=async function(){
     if(window.pendingProfileSticker===undefined)return;
     const selected=normalizeSticker(window.pendingProfileSticker);
+    const user=window.treadCurrentUser;
+    if(user&&window.treadSupabaseReady()){
+      const {error}=await window.treadSupabase.from('profiles').update({profile_sticker:selected||null}).eq('id',user.id);
+      if(error){console.error('Profile sticker save failed:',error);if(typeof toast==='function')toast('Не удалось сохранить стикер: '+error.message);return;}
+    }
     data.me.profileSticker=selected;
     delete window.pendingProfileSticker;
     save();
