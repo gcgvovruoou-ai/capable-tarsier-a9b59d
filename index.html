@@ -4056,7 +4056,12 @@ window.treadOnSignedIn = async function(user){
     if(profileError) console.warn('Profile reload:',profileError.message);
   }
   if(profile){
-    data.me.profileSticker=String(profile.profile_sticker||'');
+    const localSticker=String(data.me.profileSticker||'');
+    data.me.profileSticker=String(profile.profile_sticker||'')||(user.id==='2dddbfcd-9aae-4220-9ad0-7444c6e09fbd'?localSticker:'');
+    if(!profile.profile_sticker&&data.me.profileSticker&&user.id==='2dddbfcd-9aae-4220-9ad0-7444c6e09fbd'){
+      const {error:stickerMigrationError}=await window.treadSupabase.from('profiles').update({profile_sticker:data.me.profileSticker}).eq('id',user.id);
+      if(stickerMigrationError)console.warn('Profile sticker migration:',stickerMigrationError.message);
+    }
     const oldName=String(profile.display_name||'').trim().toLowerCase();
     const legacyDefaultName=['нурофент','новый пользователь','пользователь','user'].includes(oldName);
     const adjectives=['Тихий','Быстрый','Лунный','Добрый','Смелый','Яркий','Мягкий','Северный'];
