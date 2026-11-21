@@ -4865,7 +4865,7 @@ if(window.treadSupabaseReady()){
    const cards=catalog.map(g=>{
     const id=escHtml(g.id),name=escHtml(g.name),rarity=escHtml(g.rarity);
     let artwork='';
-    try{artwork=art(g)}catch(renderError){console.warn('Gift artwork fallback:',renderError);artwork=genericArt}
+    try{artwork=art(g)}catch(renderError){console.warn('Gift artwork fallback:',renderError);artwork=genericArt(g)}
     const colors=palette[canonical(g)]||['#a5b4fc','#37306b'];
     return '<div class="nft-gift" data-rarity="'+rarity+'" style="--n1:'+colors[0]+';--n2:'+colors[1]+'" onclick="openGiftView(\'shop\',\''+id+'\')"><div class="nft-top"><span class="nft-number">ВЫПУСК</span><span class="nft-edition">'+rarity+'</span></div><div class="nft-model">'+artwork+'</div><div class="nft-bottom"><div class="nft-title">'+name+'</div><div class="nft-rarity">tread. digital collectible</div><div class="nft-price">✦ '+formatElix(g.price)+'</div></div></div>';
    }).join('');
