@@ -1,4 +1,4 @@
-const CACHE_NAME = "tread-shell-v4";
+const CACHE_NAME = "tread-shell-v5";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg"];
 
 self.addEventListener("install", event => {
